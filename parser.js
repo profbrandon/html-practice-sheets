@@ -1,5 +1,10 @@
 
-function parseLib() {
+function parseLib(list) {
+
+	if (list == undefined) {
+		console.log("Error: cannot initialize 'parseLib' without the 'listLib' dependency.");
+		return {};
+	}
 
 	const notes =
 		"To use the module, insert this code as well as a\n" +
@@ -11,21 +16,10 @@ function parseLib() {
 
 
 // Array Utility
-	const head    = a => a[0];
-	const tail    = a => a.slice(1);
-	const isEmpty = a => a.length === 0;
-	
-	const cons = (x, a) => {
-		let temp = a.slice();
-		temp.unshift(x);
-		return temp;
-	};
-
-	const append = (x, a) => {
-		let temp = a.slice();
-		temp.push(x);
-		return temp;
-	};
+	const head    = list.head;
+	const tail    = list.tail;
+	const isEmpty = list.isEmpty;	
+	const cons    = list.cons;
 
 	
 // String Utility
@@ -203,12 +197,7 @@ function parseLib() {
 		notes: notes,
 
 		util: {
-			list: {
-				head: head,
-				tail: tail,
-				cons: cons,
-				append: append
-			},
+			list:   list,
 
 			string: {
 				toArray:  toArr,

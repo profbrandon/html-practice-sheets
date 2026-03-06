@@ -25,12 +25,20 @@ function historyLib() {
 
 	const doNothing = buildAction(x => x, x => x);
 
-	const setValue = (before, after) => {
-		return buildAction(
-			x => expect('Set', before, x, () => x, () => after),
-			x => expect('Set', after,  x, () => x, () => before)
-		);
-	};
+	const reverseAction = action => buildAction(action.revert, action.commit);
+
+	function sequenceActions(actions) {
+		if (actions.length === 0)
+			return doNothing;
+		else {
+			const back = sequenceActions(actions.slice(1));
+
+			return buildAction(
+				x => back.commit(actions[0].commit(x)),
+				x => actions[0].revert(back.revert(x))
+			);
+		}
+	}
 
 	const productAction = (associations) => {
 		if (!(associations instanceof Array)) {
@@ -65,6 +73,13 @@ function historyLib() {
 		return buildAction(
 			applyAll('commit'),
 			applyAll('revert')
+		);
+	};
+
+	const setValue = (before, after) => {
+		return buildAction(
+			x => expect('Set', before, x, () => x, () => after),
+			x => expect('Set', after,  x, () => x, () => before)
 		);
 	};
 
@@ -117,12 +132,17 @@ function historyLib() {
 
 		return Object.freeze({
 			current:  () => state,
+			size:     () => queue.length,
+
+			reset:    reset,
+
 			push:     push,
+
 			forward:  forward,
 			backward: backward,
+
 			start:    start,
-			end:      end,
-			reset:    reset
+			end:      end
 		});
 	};
 	
@@ -134,7 +154,12 @@ function historyLib() {
 
 		actions: Object.freeze({
 			build:     buildAction,
+
+			reverse:   reverseAction,
+			sequence:  sequenceActions,
+			seq:       sequenceActions,
 			product:   productAction,
+			prod:      productAction,
 
 			doNothing: doNothing,
 			set:       setValue
