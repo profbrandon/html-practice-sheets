@@ -23,8 +23,8 @@ function parseLib(list) {
 
 	
 // String Utility
-	const toArr = str => str.split('');
-	const toStr = a => a.join('');
+	const toList = str => list.from(str.split(''));
+	const toStr  = a => list.array(a).join('');
 
 
 // Character Utility
@@ -33,25 +33,22 @@ function parseLib(list) {
 
 
 // Parser Utility
-	const run = (p, s) => p(toArr(s));
+	const run = (p, s) => p(toList(s));
 
 	const produce = x => str => {
-		const obj = {
+		return Object.freeze({
+			__proto__: null,
+		
 			rest:   str,
 			result: x
-		};
-
-		return Object.freeze(obj);
+		});
 	};
 
 	const failWith = (field, value) => str => {
-		const obj = {
-			rest:   str,
-			result: undefined
-		};
-
+		const obj = Object.create(null);
+		obj.rest   = str;
+		obj.result = undefined;
 		obj[field] = value;
-
 		return Object.freeze(obj);
 	};
 
@@ -78,7 +75,7 @@ function parseLib(list) {
 
 	const traverse = ps => {
 		if (isEmpty(ps))
-			return produce([]);
+			return produce(list.nil);
 		else 
 			return bind(
 				head(ps),
@@ -91,7 +88,7 @@ function parseLib(list) {
 // Failures
 	const fail        =            failWith('message', 'nonspecific failure');
 	const failBecause = message => failWith('message', message);
-	const expected    = x       => failWith('expected', x);
+	const expected    = x       => failWith('expected', list.produce(x));
 
 	const onFailureOf = (p, err) =>
 		match(p)(
@@ -122,10 +119,10 @@ function parseLib(list) {
 						success => produce(success.result)(success.rest),
 						failures => {
 							if (failure.expected != undefined && failures.expected == undefined)
-								return expected([failure.expected].flat())(str);
+								return failWith('expected', failure.expected)(str);
 							
 							else if (failure.expected != undefined && failures.expected != undefined)
-								return expected(cons(failure.expected, failures.expected).flat())(str);
+								return failWith('expected', list.concat(failure.expected, failures.expected))(str);
 						
 							else
 								return failBecause(failure.message)(str);
@@ -135,12 +132,17 @@ function parseLib(list) {
 	};
 
 	const many = px =>
-		onFailureOf(
+		tryAll(list.from([
 			bind(px, x => bind(many(px), xs => produce(cons(x, xs)))),
-			produce([]));
+			produce(list.nil)]));
 
 	const many1 = px =>
 		bind(px, x => bind(many(px), xs => produce(cons(x, xs))));
+
+	const between = (left, middle, right) => sequence(
+		left,
+		bind(middle, m => sequence(right, produce(m)))
+	);
 
 
 // Characters
@@ -153,7 +155,7 @@ function parseLib(list) {
 
 	const character = c => exact(c, anyChar);
 
-	const oneOf = s => tryAll(toArr(s).map(character));
+	const oneOf = s => tryAll(list.fmap(character)(toList(s)));
 
 
 // Numbers
@@ -165,14 +167,14 @@ function parseLib(list) {
 		character('-'), 
 		fmap(n => -n)(positive));
 
-	const integer = tryAll([positive, negative]);
+	const integer = tryAll(list.from([positive, negative]));
 
 	const aFloat = fmap(parseFloat)(
 		bind(
-			tryAll([character('-'), produce('+')]),
+			tryAll(list.from([character('-'), produce('+')])),
 			sign => bind(
 					fmap(toStr)(many1(digit)),
-					whole => tryAll(
+					whole => tryAll(list.from(
 						[
 							sequence(
 								character('.'),
@@ -180,35 +182,44 @@ function parseLib(list) {
 									fmap(toStr)(many1(digit)), 
 									fractional => produce(sign + whole + '.' + fractional))),
 							produce(sign + whole)
-						]))));
+						])))));
 
 	const hexDigit = oneOf('0123456789abcdefABCDEF');
 
 	const hexPositive = fmap(a => parseInt('0x' + toStr(a)))(many1(hexDigit));
 
 
-// String
-	const aString = s => fmap(toStr)(traverse(toArr(s).map(character)));
+// Strings
+	const aString = s => fmap(toStr)(traverse(list.fmap(character)(toList(s))));
 
+	const singleQuoted = bind(
+		between(
+			character("'"),
+			many(satisfy(c => c != "'", anyChar)),
+			character("'")),
+		cs => produce(toStr(cs)));
+
+	const doubleQuoted = bind(
+		between(
+			character('"'),
+			many(satisfy(c => c != '"', anyChar)),
+			character('"')),
+		cs => produce(toStr(cs)));
+
+
+// Text
+	const lowercase = oneOf('abcdefghijklmnopqrstuvwxyz');
+	const uppercase = oneOf('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+
+	const aLetter = tryAll(list.from([lowercase, uppercase]));
+
+	const aWord = bind(many1(aLetter), cs => produce(toStr(cs)));
 
 // Produce the module
 	return Object.freeze({
+		__proto__: null,
 
-		notes: notes,
-
-		util: {
-			list:   list,
-
-			string: {
-				toArray:  toArr,
-				toString: toStr
-			},
-
-			character: {
-				isDigit: isDigit,
-				isAlpha: isAlpha
-			}
-		},
+		notes:       notes,
 
 		run:         run,
 		produce:     produce,
@@ -219,6 +230,7 @@ function parseLib(list) {
 		seq:         sequence,
 		fmap:        fmap,
 		traverse:    traverse,
+		between:     between,
 
 		fail:        fail,
 		failBecause: failBecause,
@@ -263,7 +275,16 @@ function parseLib(list) {
 		aHexPositive: hexPositive,
 
 		aString:     aString,
-		str:         aString
+		str:         aString,
+		singleQuote: singleQuoted,
+		doubleQuote: doubleQuoted,
+
+		lowercase:   lowercase,
+		uppercase:   uppercase,
+		letter:      aLetter,
+		aLetter:     aLetter,
+		aWord:       aWord,
+		word:        aWord
 	});
 }
 
