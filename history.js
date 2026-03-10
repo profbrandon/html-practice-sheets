@@ -1,6 +1,6 @@
 
 
-function historyLib() {
+function historyLib(list) {
 
 // Errors
 	let reportError = console.log;
@@ -17,10 +17,12 @@ function historyLib() {
 
 // Actions
 	const buildAction = (commit, revert) => {
-		return {
+		return Object.freeze({
+			__proto__: null,
+
 			commit: commit,
 			revert: revert
-		};
+		});
 	};
 
 	const doNothing = buildAction(x => x, x => x);
@@ -28,46 +30,48 @@ function historyLib() {
 	const reverseAction = action => buildAction(action.revert, action.commit);
 
 	function sequenceActions(actions) {
-		if (actions.length === 0)
+		if (list.isEmpty(actions))
 			return doNothing;
 		else {
-			const back = sequenceActions(actions.slice(1));
+			const head = list.head(actions);
+			const tail = sequenceActions(list.tail(actions));
 
 			return buildAction(
-				x => back.commit(actions[0].commit(x)),
-				x => actions[0].revert(back.revert(x))
+				x => tail.commit(head.commit(x)),
+				x => head.revert(tail.revert(x))
 			);
 		}
 	}
 
 	const productAction = (associations) => {
-		if (!(associations instanceof Array)) {
-			reportError('Product action expects an array of { field: ..., action: ... } pairs.');
-			return;
-		}
-
 		const applyAll = direction => prod => {
-			let obj = {};
+			let obj = Object.create(null);
 
-			for (let i = 0; i < associations.length; ++i) {
-				const assoc = associations[i];
+			let out = list.bind(
+				associations,
+				assoc => {
+					if (assoc['field'] == undefined || assoc['action'] == undefined) {
+						reportError(
+							`Product action violated: expected the association ${assoc} ` +
+							'to have the form { field: ..., action: ... }');
+						return list.produce(prod);
+					}
 
-				if (assoc[field] == undefined || assoc[action] == undefined) {
-					reportError(
-						`Product action violated: expected the association ${assoc} ` +
-						'to have the form { field: ..., action: ... }');
-					return prod;
+					if (prod[assoc.field] == undefined) {
+						reportError(`Product action violated: no field '${assoc.field}'`);
+						return list.produce(prod);
+					}
+					else {
+						obj[assoc.field] = assoc.action[direction](prod[assoc.field]);
+						return list.nil;
+					}
 				}
-
-				if (prod[assoc.field] == undefined) {
-					reportError(`Product action violated: no field '${assoc.field}'`);
-					return prod;
-				}
-				else
-					obj[assoc.field] = assoc.action[direction](prod[assoc.field]);
-			}
-
-			return obj;
+			);
+		
+			if (list.isEmpty(out))
+				return Object.freeze(obj);
+			else
+				return prod;
 		};
 
 		return buildAction(
@@ -131,6 +135,8 @@ function historyLib() {
 
 
 		return Object.freeze({
+			__proto__: null,
+
 			current:  () => state,
 			size:     () => queue.length,
 
@@ -147,12 +153,17 @@ function historyLib() {
 	};
 	
 	return Object.freeze({
+		__proto__: null,
 
 		errors: Object.freeze({
+			__proto__: null,
+
 			setStream: f => { reportError = f }
 		}),
 
 		actions: Object.freeze({
+			__proto__: null,
+
 			build:     buildAction,
 
 			reverse:   reverseAction,
