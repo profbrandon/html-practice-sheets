@@ -1,33 +1,76 @@
 
 function listLib() {
 
-	const isEmpty = as => as.length === 0;
+// Frozen constructors
+	const empty = Object.freeze({
+		__proto__: null,
 
-	const head = as => as[0];
-	const tail = as => as.slice(1);
+		head: undefined,
+		tail: undefined
+	});
+
 	const cons = (a, as) => {
-		let temp = as.slice();
-		temp.unshift(a);
-		return temp;
+		return Object.freeze({
+			__proto__: null,
+
+			head: a,
+			tail: as
+		});
 	};
 
-	const append = (a, as) => {
-		let temp = as.slice();
-		temp.push(a);
-		return temp;
-	};
 
-	const foldr = (seed, f) => as => {
+// Basics	
+	const head = as => as.head;
+	const tail = as => as.tail;
+
+	const isEmpty = as => as.head == undefined;
+
+	const foldr_cont = (seed, f) => as => cont => {
 		if (isEmpty(as))
-			return seed;
+			return cont(seed)
 		else
-			return f(foldr(seed, f)(tail(as)), head(as));
+			return foldr_cont(seed, f)(tail(as))(x => cont(f(head(as), x)));
 	};
 
+	const foldr = (seed, f) => as => foldr_cont(seed, f)(as)(x => x);
+
+	const foldl = (seed, f) => as => foldr(y => y, (x, g) => y => g(f(x, y)))(as)(seed);
+
+	const fmap = f => foldr(empty, (a, bs) => cons(f(a), bs));
+
+	const concat = (xs, ys) => foldr(ys, cons)(xs);
+
+	const append = (a, as) => foldr(cons(a, empty), cons)(as);
+
+	const reverse = foldl(empty, cons);
+
+	const length = foldr(0, (_, n) => n + 1);
+
+// Conversions
+	const from  = arr => arr.reduceRight((as, a) => cons(a, as), empty);
+	const array = arr => foldl([], (x, a) => { a.push(x); return a; })(arr).slice();
+
+	function list() {
+		return from(Array.from(arguments));
+	}
+
+// List Monad
+	const produce = a => cons(a, empty);
+	const join    = foldr(empty, concat);
+
+	const bind = (xs, mf) => join(fmap(mf)(xs));
+
+	const sequence = (xs, ys) => bind(xs, _ => ys);
 
 
 	return Object.freeze({
+		__proto__: null,
+
+		empty:   empty,
+		nil:     empty,
+
 		isEmpty: isEmpty,
+		isNil:   isEmpty,
 
 		head:    head,
 		tail:    tail,
@@ -35,6 +78,25 @@ function listLib() {
 		cons:    cons,
 		append:  append,
 
-		foldr:   foldr
+		length:  length,
+		len:     length,
+
+		foldr:      foldr,
+		foldl:      foldl,
+		foldr_cont: foldr_cont,
+		fmap:       fmap,
+		concat:     concat,
+		reverse:    reverse,
+
+		produce:  produce,
+		join:     join,
+		bind:     bind,
+		sequence: sequence,
+		seq:      sequence,
+
+		from:    from,
+		array:   array,
+		list:    list,
+		build:   list
 	});
 }
