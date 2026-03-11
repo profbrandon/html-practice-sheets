@@ -95,8 +95,8 @@ function historyLib(list) {
 		let state = value;
 
 		const push = action => {
-			if (queue.length === maxLength)
-				queue.slice(1);
+			if (queue.length === maxLength && ptr === queue.length)
+				queue = queue.slice(1);
 			else
 				++ptr;
 
@@ -127,12 +127,10 @@ function historyLib(list) {
 			while (ptr < queue.length - 1) forward();
 		};
 
-		const reset = () => {
-			start();
+		const clear = () => {	
 			ptr   = -1;
 			queue = [];
 		};
-
 
 		return Object.freeze({
 			__proto__: null,
@@ -140,7 +138,7 @@ function historyLib(list) {
 			current:  () => state,
 			size:     () => queue.length,
 
-			reset:    reset,
+			clear:    clear,
 
 			push:     push,
 
