@@ -22,6 +22,8 @@ function markupLib(list, tree, parse) {
 
 
 // Rendering Elements as Strings
+	const header = e => e.tag + '[' + list.foldr('', (a, s) => `{${a.name}: '${a.value}'}` + s)(e.attributes) + ']';
+	
 	const attributeString = a => `${a.name}='${a.value}'`;
 
 	const openingTag = e => {
@@ -121,6 +123,7 @@ function markupLib(list, tree, parse) {
 		element:    element,
 		el:         element,
 
+		header:     header,
 		openingTag: openingTag,
 		open:       openingTag,
 		closingTag: closingTag,
