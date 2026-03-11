@@ -78,6 +78,11 @@ function treeLib(list) {
 			);
 	}
 
+	
+	const print = (tree, acceptor) => {
+		acceptor(list.array(treeDiagram(tree)).join('\n'));
+	};
+
 
 
 	return Object.freeze({
@@ -96,7 +101,9 @@ function treeLib(list) {
 		polish:   depthFirstPolish,
 		rPolish:  depthFirstReversePolish,
 
-		diagram:  treeDiagram
+		diagram:  treeDiagram,
+
+		print:    print
 	});
 }
 
