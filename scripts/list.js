@@ -42,9 +42,17 @@ function listLib() {
 
 	const append = (a, as) => foldr(cons(a, empty), cons)(as);
 
+	const init = as => foldr(
+		x => empty, 
+		(x, f) => y => cons(y, f(x))
+	)(tail(as))(head(as));
+
+	const last = as => foldl(x => x, (v, f) => x => v)(as)(head(as));
+
 	const reverse = foldl(empty, cons);
 
 	const length = foldr(0, (_, n) => n + 1);
+
 
 // Conversions
 	const from  = arr => arr.reduceRight((as, a) => cons(a, as), empty);
@@ -54,7 +62,9 @@ function listLib() {
 		return from(Array.from(arguments));
 	}
 
+
 // List Monad
+	const fail    = empty;
 	const produce = a => cons(a, empty);
 	const join    = foldr(empty, concat);
 
@@ -62,6 +72,9 @@ function listLib() {
 
 	const sequence = (xs, ys) => bind(xs, _ => ys);
 
+
+// Filter
+	const filter = (condx, xs) => bind(xs, x => condx(x) ? produce(x) : fail);
 
 	return Object.freeze({
 		__proto__: null,
@@ -74,6 +87,8 @@ function listLib() {
 
 		head:    head,
 		tail:    tail,
+		last:    last,
+		init:    init,
 
 		cons:    cons,
 		append:  append,
@@ -93,6 +108,8 @@ function listLib() {
 		bind:     bind,
 		sequence: sequence,
 		seq:      sequence,
+
+		filter:   filter,
 
 		from:    from,
 		array:   array,
