@@ -132,9 +132,10 @@ function parseLib(list) {
 	};
 
 	const many = px =>
-		tryAll(list.from([
+		tryAll(list.build(
 			bind(px, x => bind(many(px), xs => produce(cons(x, xs)))),
-			produce(list.nil)]));
+			produce(list.nil)
+		));
 
 	const many1 = px =>
 		bind(px, x => bind(many(px), xs => produce(cons(x, xs))));
@@ -174,15 +175,15 @@ function parseLib(list) {
 			tryAll(list.from([character('-'), produce('+')])),
 			sign => bind(
 					fmap(toStr)(many1(digit)),
-					whole => tryAll(list.from(
-						[
-							sequence(
-								character('.'),
-								bind(
-									fmap(toStr)(many1(digit)), 
-									fractional => produce(sign + whole + '.' + fractional))),
-							produce(sign + whole)
-						])))));
+					whole => tryAll(list.build(
+						sequence(
+							character('.'),
+							bind(
+								fmap(toStr)(many1(digit)), 
+								fractional => produce(sign + whole + '.' + fractional))),
+							
+						produce(sign + whole)
+					)))));
 
 	const hexDigit = oneOf('0123456789abcdefABCDEF');
 
@@ -211,7 +212,7 @@ function parseLib(list) {
 	const lowercase = oneOf('abcdefghijklmnopqrstuvwxyz');
 	const uppercase = oneOf('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
 
-	const aLetter = tryAll(list.from([lowercase, uppercase]));
+	const aLetter = tryAll(list.build(lowercase, uppercase));
 
 	const aWord = bind(many1(aLetter), cs => produce(toStr(cs)));
 
