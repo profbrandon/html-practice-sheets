@@ -30,21 +30,9 @@ function exprLib(list, tree, parse) {
 
 
 // Concrete Expression Trees
-	const number = n => tree.leaf(
-		exprValue('Number', Object.freeze({
-			__proto__: null,
+	const number = n => tree.leaf(exprValue('Number', n));
 
-			constant: n
-		}))
-	);
-
-	const variable = name => tree.leaf(
-		exprValue('Variable', Object.freeze({
-			__proto__: null,
-
-			name: name
-		}))
-	);
+	const variable = name => tree.leaf(exprValue('Variable', name));
 
 	const neg   = x => unaryOp('-', prefix, x);
 
@@ -53,24 +41,75 @@ function exprLib(list, tree, parse) {
 
 	const add  = (x, y) => binaryOp('+', infix, x, y);
 	const sub  = (x, y) => binaryOp('-', infix, x, y);
-	const mult = (x, y) => binaryOp('*', infix, x, y);
+	const mult = (x, y) => binaryOp('\u00b7', infix, x, y);
 	const div  = (x, y) => binaryOp('/', infix, x, y);
 	const exp  = (x, y) => binaryOp('^', infix, x, y);
 
+	const placeholder = voidOp('Placeholder', prefix);
+
 
 // Accessors
-	const type  = e => e.type;
-	const value = e => e.value;
-	const nodeValue = node => value(tree.value(node));
-	const nodeType  = node => type(tree.value(node));
+	const value = ev => ev.value;
+	const type  = ev => ev.type;
+
+	const symbol = op => op.symbol;
+	const fixity = op => op.fixity;
+
+
+// Processing
+	const matchType = ev => 
+		(onNumber, onVariable, onVoidOp, onUnaryOp, onBinaryOp) => {
+			const v = value(ev);
+
+			switch(type(ev)) {
+				case 'Number':
+					return onNumber(v);
+
+				case 'Variable':
+					return onVariable(v);
+
+				case 'VoidOp':
+					return onVoidOp(v);
+
+				case 'UnaryOp':
+					return onUnaryOp(v);
+
+				case 'BinaryOp':
+					return onBinaryOp(v);
+			}
+		};
+
+	const matchFixity = op => (onPrefix, onInfix, onPostfix) => {
+		switch(op.fixity) {
+			case prefix:
+				return onPrefix(op.symbol);
+
+			case infix:
+				return onInfix(op.symbol);
+
+			case postfix:
+				return onPostFix(op.symbol);
+		}
+	};
 
 	return Object.freeze({
 		__proto__: null,
 
 		type:       type,
 		value:      value,
-		nodeType:   nodeType,
-		nodeValue:  nodeValue,
+		symbol:     symbol,
+		fixity:     fixity,
+
+		prefix:     prefix,
+		infix:      infix,
+		postfix:    postfix,
+
+		voidOp:     voidOp,
+		unaryOp:    unaryOp,
+		binaryOp:   binaryOp,
+
+		matchType:   matchType,
+		matchFixity: matchFixity,
 
 		number:     number,
 		num:        number,
@@ -100,6 +139,8 @@ function exprLib(list, tree, parse) {
 
 		raise:      exp,
 		exp:        exp,
-		pow:        exp
+		pow:        exp,
+
+		placeholder: placeholder
 	});
 }
