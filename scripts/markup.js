@@ -20,9 +20,16 @@ function markupLib(list, tree, parse) {
 		};
 	};
 
+	const text = str => element('text:', list.build(attribute('value', str)));
+
 
 // Rendering Elements as Strings
-	const header = e => e.tag + '[' + list.foldr('', (a, s) => `{${a.name}: '${a.value}'}` + s)(e.attributes) + ']';
+	const header = e => {
+		if (e.tag === 'text:')
+			return e.tag + '"' + list.head(e.attributes).value + '"'
+		else
+			return e.tag + '[' + list.foldr('', (a, s) => `{${a.name}: '${a.value}'}` + s)(e.attributes) + ']';
+	}
 	
 	const attributeString = a => `${a.name}='${a.value}'`;
 
@@ -40,11 +47,16 @@ function markupLib(list, tree, parse) {
 			return `</${e.tag}>`;
 	}
 
-	const renderTree = tree.foldr((e, cs) => `${openingTag(e)}${list.array(cs).join('')}${closingTag(e)}`);
+	const renderTree = tree.foldr(
+		e => `${openingTag(e)}${closingTag(e)}`, 
+		(e, cs) => `${openingTag(e)}${list.array(cs).join('')}${closingTag(e)}`);
 
 
 // Parsing Element Trees
-	const parseJSString = parse.tryAll(list.from([parse.singleQuote, parse.doubleQuote]));
+	const parseJSString = parse.tryAll(
+		list.build(
+			parse.singleQuote, 
+			parse.doubleQuote));
 
 	const parseAttribute = parse.bind(
 		parse.aWord,
@@ -122,6 +134,8 @@ function markupLib(list, tree, parse) {
 		attr:       attribute,
 		element:    element,
 		el:         element,
+
+		text:       text,
 
 		header:     header,
 		openingTag: openingTag,
