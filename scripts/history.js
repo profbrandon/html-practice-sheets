@@ -15,7 +15,7 @@ function historyLib(list) {
 	};
 
 
-// Actions
+// Action Utilities
 	const buildAction = (commit, revert) => {
 		return Object.freeze({
 			__proto__: null,
@@ -41,6 +41,15 @@ function historyLib(list) {
 				x => head.revert(tail.revert(x))
 			);
 		}
+	}
+
+	const buildAssoc = (field, action) => {
+		return {
+			__proto__: null,
+
+			field:  field,
+			action: action
+		};
 	}
 
 	const productAction = (associations) => {
@@ -170,7 +179,10 @@ function historyLib(list) {
 			product:   productAction,
 			prod:      productAction,
 
+			assoc:     buildAssoc,
+
 			doNothing: doNothing,
+			setValue:  setValue,
 			set:       setValue
 		}),
 
