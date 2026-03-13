@@ -55,6 +55,23 @@ function exprLib(list, tree, parse) {
 	const symbol = op => op.symbol;
 	const fixity = op => op.fixity;
 
+	const lookupOp = (op) => {
+		switch(op) {
+			case '+':
+				return add;
+			case '-':
+				return sub;
+			case '*':
+			case '\u00b7':
+				return mult;
+			case '/':
+				return div;
+			case '^':
+				return exp;
+			default:
+				return undefined;
+		}
+	}
 
 // Processing
 	const matchType = ev => 
@@ -107,6 +124,8 @@ function exprLib(list, tree, parse) {
 		voidOp:     voidOp,
 		unaryOp:    unaryOp,
 		binaryOp:   binaryOp,
+
+		lookupOp:   lookupOp,
 
 		matchType:   matchType,
 		matchFixity: matchFixity,
