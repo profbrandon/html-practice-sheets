@@ -111,12 +111,24 @@ function parseLib(list) {
 					match(tryAll(list.tail(ps)))(
 						success  => produce(success.result)(success.rest),
 						failures => {
-							if (failure.expected != undefined && failures.expected == undefined)
-								return failWith('expected', failure.expected)(str);
-							
-							else if (failure.expected != undefined && failures.expected != undefined)
-								return failWith('expected', list.concat(failure.expected, failures.expected))(str);
 						
+							// TODO: update after adding a sum.beware() function.
+							
+							if (failure.expected != undefined {
+								if (failures.expected != undefined)
+									return failWith(
+										'expected',
+										list.concat(
+											failure.expected, 
+											failures.expected)
+									)(str);
+
+								else
+									return failWith(
+										'expected', 
+										failure.expected
+									)(str);
+							}
 							else
 								return failBecause(failure.message)(str);
 						}
