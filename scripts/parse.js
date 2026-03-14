@@ -15,13 +15,6 @@ function parseLib(list) {
 		"To feed a string to a parser, use 'parse.run(p, s)'.";
 
 
-// Array Utility
-	const head    = list.head;
-	const tail    = list.tail;
-	const isEmpty = list.isEmpty;	
-	const cons    = list.cons;
-
-	
 // String Utility
 	const toList = str => list.from(str.split(''));
 	const toStr  = a => list.array(a).join('');
@@ -74,14 +67,14 @@ function parseLib(list) {
 	const fmap = f => px => bind(px, x => produce(f(x)));
 
 	const traverse = ps => {
-		if (isEmpty(ps))
+		if (list.isEmpty(ps))
 			return produce(list.nil);
 		else 
 			return bind(
-				head(ps),
+				list.head(ps),
 				x => bind(
-					traverse(tail(ps)),
-					xs => produce(cons(x, xs))));
+					traverse(list.tail(ps)),
+					xs => produce(list.cons(x, xs))));
 	};
 
 
@@ -109,14 +102,14 @@ function parseLib(list) {
 			expected(x));
 
 	const tryAll = ps => {
-		if (isEmpty(ps))
+		if (list.isEmpty(ps))
 			return failBecause("no parsers provided to 'tryAll'");
 		else 
-			return str => match(head(ps))(
+			return str => match(list.head(ps))(
 				success => produce(success.result)(success.rest),
 				failure => 
-					match(tryAll(tail(ps)))(
-						success => produce(success.result)(success.rest),
+					match(tryAll(list.tail(ps)))(
+						success  => produce(success.result)(success.rest),
 						failures => {
 							if (failure.expected != undefined && failures.expected == undefined)
 								return failWith('expected', failure.expected)(str);
@@ -133,12 +126,12 @@ function parseLib(list) {
 
 	const many = px =>
 		tryAll(list.build(
-			bind(px, x => bind(many(px), xs => produce(cons(x, xs)))),
+			bind(px, x => bind(many(px), xs => produce(list.cons(x, xs)))),
 			produce(list.nil)
 		));
 
 	const many1 = px =>
-		bind(px, x => bind(many(px), xs => produce(cons(x, xs))));
+		bind(px, x => bind(many(px), xs => produce(list.cons(x, xs))));
 
 	const between = (left, middle, right) => sequence(
 		left,
@@ -148,10 +141,10 @@ function parseLib(list) {
 
 // Characters
 	const anyChar = str => {
-		if (isEmpty(str))
+		if (list.isEmpty(str))
 			return expected('a character')(str);
 		else
-			return produce(head(str))(tail(str));
+			return produce(list.head(str))(list.tail(str));
 	};
 
 	const character = c => exact(c, anyChar);
@@ -168,11 +161,11 @@ function parseLib(list) {
 		character('-'), 
 		fmap(n => -n)(positive));
 
-	const integer = tryAll(list.from([positive, negative]));
+	const integer = tryAll(list.build(positive, negative));
 
 	const aFloat = fmap(parseFloat)(
 		bind(
-			tryAll(list.from([character('-'), produce('+')])),
+			tryAll(list.build(character('-'), produce('+'))),
 			sign => bind(
 					fmap(toStr)(many1(digit)),
 					whole => tryAll(list.build(
