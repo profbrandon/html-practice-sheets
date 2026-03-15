@@ -114,7 +114,7 @@ function parseLib(list) {
 						
 							// TODO: update after adding a sum.beware() function.
 							
-							if (failure.expected != undefined {
+							if (failure.expected != undefined) {
 								if (failures.expected != undefined)
 									return failWith(
 										'expected',
