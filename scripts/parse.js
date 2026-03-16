@@ -138,6 +138,7 @@ function parseLib(sum, sigma, list) {
 // String Parsing	
 	const runStr = (p, s) => p(list.fromStr(s));
 
+
 // Characters
 	const anyChar = str => {
 		if (list.isEmpty(str))
@@ -208,7 +209,8 @@ function parseLib(sum, sigma, list) {
 
 	const aWord = bind(many1(aLetter), cs => produce(toStr(cs)));
 
-// Produce the module
+
+// Library
 	return Object.freeze({
 		__proto__: null,
 
