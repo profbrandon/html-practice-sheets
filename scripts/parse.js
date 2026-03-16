@@ -38,9 +38,9 @@ function parseLib(sum, sigma, list) {
 			result: sum.right(value)
 		});
 
-	const getInput = input => produce(input)(input);
+	const getInput = input => run(produce(input), input);
 	
-	const setInput = value => _ => produce(Object.create(null))(value);
+	const setInput = value => _ => run(produce(Object.create(null)), value);
 
 	const bind = (p, mf) => input => {
 		const out = run(p, input);
@@ -140,16 +140,24 @@ function parseLib(sum, sigma, list) {
 
 
 // String Parsing	
-	const runStr = (p, s) => p(list.fromStr(s));
+	const runStr = (p, s) => p(pair.build(0, list.fromStr(s)));
 
 
 // Characters
-	const anyChar = str => {
-		if (list.isEmpty(str))
-			return expected('a character')(str);
-		else
-			return produce(list.head(str))(list.tail(str));
-	};
+	const anyChar = bind(
+		getInput,
+		input => {
+			const pos = pair.fst(input);
+			const str = pair.snd(input);
+
+			if (list.isEmpty(str))
+				return expected('a character');
+			else
+				return sequence(
+					setInput(pair.build(pos + 1, list.tail(str))),
+					produce(list.head(str)));
+		}
+	);
 
 	const character = c => exact(c, anyChar);
 
@@ -222,6 +230,8 @@ function parseLib(sum, sigma, list) {
 
 		run:         run,
 		produce:     produce,
+		setInput:    setInput,
+		getInput:    getInput,
 		bind:        bind,
 		sequence:    sequence,
 		seq:         sequence,
