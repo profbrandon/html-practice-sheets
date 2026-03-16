@@ -38,6 +38,10 @@ function parseLib(sum, sigma, list) {
 			result: sum.right(value)
 		});
 
+	const getInput = input => produce(input)(input);
+	
+	const setInput = value => _ => produce(Object.create(null))(value);
+
 	const bind = (p, mf) => input => {
 		const out = run(p, input);
 		return sum.match(out.result)(
