@@ -25,8 +25,12 @@ function markupLib(list, tree, parse) {
 
 // Rendering Elements as Strings
 	const header = e => {
-		if (e.tag === 'text:')
-			return e.tag + '"' + list.head(e.attributes).value + '"'
+		if (e.tag === 'text:') {
+			const str = list.head(e.attributes).value;
+			const display = str.length > 64 ? str.slice(0, 32) + ' ... ' + str.slice(-16) : str;
+
+			return e.tag + '"' + display + '"';
+		}
 		else
 			return e.tag + '[' + list.foldr('', (a, s) => `{${a.name}: '${a.value}'}` + s)(e.attributes) + ']';
 	}
@@ -66,26 +70,32 @@ function markupLib(list, tree, parse) {
 				parseJSString,
 				value => parse.produce(attribute(name, value)))));
 
-	const parseOpeningTag = parse.between(
-		parse.aChar('<'),
-		parse.bind(
-			parse.aWord,
-			tag => parse.bind(
-				parse.many(parse.seq(parse.aChar(' '), parseAttribute)),
-				as => parse.produce(element(tag, as))
-			)
-		),
-		parse.aChar('>')
+	const parseTagAttributes = parse.bind(
+		parse.aWord,
+		tag => parse.bind(
+			parse.many(parse.seq(parse.aChar(' '), parseAttribute)),
+			as => parse.produce(element(tag, as))
+		)
 	);
 
-	const parseClosingTag = parse.between(
-		parse.aString('</'),
-		parse.aWord,
-		parse.aChar('>')
-	);
+	const parseOpeningTag = parse.between(parse.aChar('<'), parseTagAttributes, parse.aChar('>'));
+
+	const parseClosingTag = parse.between(parse.aString('</'), parse.aWord, parse.aChar('>'));
+
+	const parseSelfClosingTag = parse.between(parse.aChar('<'), parseTagAttributes, parse.aString('/>'));
 
 	const parseText = parse.bind(
-		parse.many1(parse.satisfy(c => c != '<' && c != '>', parse.anyChar)),
+		// Parse any characters that are not part of an opening or closing tag
+		parse.many1(
+			parse.bind(
+				parse.tryCatch(
+					parse.seq(
+						parse.tryAll(list.build(parseOpeningTag, parseClosingTag)), 
+						parse.produce('')),
+					_ => parse.anyChar
+				),
+				s => s.length === 0 ? parse.fail : parse.produce(s))),
+		// Wrap those characters in a 'text:' node.
 		cs => parse.produce(
 			tree.node(
 				element(
@@ -97,7 +107,15 @@ function markupLib(list, tree, parse) {
 				list.nil))
 	);
 
-	const parseTag = children => parse.bind(
+	const parseVoidElement = parse.bind(
+		parse.tryAll(list.build(
+			parseOpeningTag,
+			parseSelfClosingTag
+		)),
+		e => parse.produce(tree.leaf(e))
+	);
+
+	const parseNormalElement = children => parse.bind(
 		parseOpeningTag,
 		e => parse.bind(
 			children,
@@ -108,25 +126,30 @@ function markupLib(list, tree, parse) {
 						return parse.produce(tree.node(e, cs));
 					else
 						return parse.failBecause(`ending tag '${tag}' does not match the opening tag '${e.tag}'`);
-				})));
+				}
+			)
+		)
+	);
 
-	function fix(f) {
-		return parse.tryAll(list.build(
-			f(parse.produce(list.nil)),
-			parse.bind(
-				parse.produce(g => g(parse.many(fix(g)))),
-				q => q(f))	
-		));
-	}
+	const fix = (f) => parse.bind(
+		parse.produce(g => g(fix(g))),
+		q => q(f)		
+	);
 
-	const parseTree = parseTag(
-		parse.many(
-			fix(cs => parse.tryAll(list.build(
-				parseText, 
-				parseTag(cs)))))
+	const parseTree = parseNormalElement(
+		fix(cs => 
+			parse.many(
+				parse.tryAll(list.build(
+					parseText,
+					parseNormalElement(cs),
+					parseVoidElement
+				))
+			)
+		)
 	);
 
 
+// Library
 	return Object.freeze({
 		__proto__:  null,
 
@@ -144,11 +167,21 @@ function markupLib(list, tree, parse) {
 		close:      closingTag,
 		renderTree: renderTree,
 
-		parseOpen:  parseOpeningTag,
-		parseClose: parseClosingTag,
-		parseTag:   parseTag,
-		parseText:  parseText,
-		parseTree:  parseTree,
+		parse: Object.freeze({
+			__proto__: null,
+
+			open:          parseOpeningTag,
+			close:         parseClosingTag,
+			selfClose:     parseSelfClosingTag,
+
+			voidElement:   parseVoidElement,
+			voidEl:        parseVoidElement,
+			normalElement: parseNormalElement,
+			normEl:        parseNormalElement,
+
+			text:          parseText,
+			tree:          parseTree
+		}),
 
 		fix:        fix
 	});
