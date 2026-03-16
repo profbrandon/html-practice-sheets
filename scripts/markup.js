@@ -1,5 +1,5 @@
 
-function markupLib(list, tree, parse) {
+function markupLib(pair, list, tree, parse) {
 
 // Elements
 	const attribute = (name, value) => {
@@ -11,16 +11,17 @@ function markupLib(list, tree, parse) {
 		};
 	};
 
-	const element = (tag, attributes) => {
+	const element = (tag, closed, attributes) => {
 		return {
 			__proto__: null,
 
 			tag:        tag,
+			closed:     closed,
 			attributes: attributes
 		};
 	};
 
-	const text = str => element('text:', list.build(attribute('value', str)));
+	const text = str => element('text:', true, list.build(attribute('value', str)));
 
 
 // Rendering Elements as Strings
@@ -52,7 +53,7 @@ function markupLib(list, tree, parse) {
 	}
 
 	const renderTree = tree.foldr(
-		e => `${openingTag(e)}${closingTag(e)}`, 
+		e => e.closed ? `${openingTag(e)}` : `${openingTag(e)}${closingTag(e)}`, 
 		(e, cs) => `${openingTag(e)}${list.array(cs).join('')}${closingTag(e)}`);
 
 
@@ -60,7 +61,8 @@ function markupLib(list, tree, parse) {
 	const parseJSString = parse.tryAll(
 		list.build(
 			parse.singleQuote, 
-			parse.doubleQuote));
+			parse.doubleQuote)
+	);
 
 	const parseAttribute = parse.bind(
 		parse.aWord,
@@ -74,7 +76,7 @@ function markupLib(list, tree, parse) {
 		parse.aWord,
 		tag => parse.bind(
 			parse.many(parse.seq(parse.aChar(' '), parseAttribute)),
-			as => parse.produce(element(tag, as))
+			as => parse.produce(pair.build(tag, as))
 		)
 	);
 
@@ -96,15 +98,9 @@ function markupLib(list, tree, parse) {
 				),
 				s => s.length === 0 ? parse.fail : parse.produce(s))),
 		// Wrap those characters in a 'text:' node.
-		cs => parse.produce(
-			tree.node(
-				element(
-					'text:', 
-					list.build(
-						attribute(
-							'value', 
-							list.array(list.filter(c => c != '\n', cs)).join('')))),
-				list.nil))
+		cs => parse.produce(tree.leaf(text(
+			list.array(list.filter(c => c != '\n', cs)).join('')
+		)))
 	);
 
 	const parseVoidElement = parse.bind(
@@ -112,21 +108,26 @@ function markupLib(list, tree, parse) {
 			parseOpeningTag,
 			parseSelfClosingTag
 		)),
-		e => parse.produce(tree.leaf(e))
+		p => parse.produce(
+			pair.match(p)(
+				(tag, attributes) => tree.leaf(element(tag, true, attributes))
+			)
+		)
 	);
 
 	const parseNormalElement = children => parse.bind(
 		parseOpeningTag,
-		e => parse.bind(
+		p => parse.bind(
 			children,
 			cs => parse.bind(
 				parseClosingTag,
-				tag => {
-					if (tag === e.tag)
-						return parse.produce(tree.node(e, cs));
-					else
-						return parse.failBecause(`ending tag '${tag}' does not match the opening tag '${e.tag}'`);
-				}
+				close => pair.match(p)(
+					(open, attributes) => {
+						if (open === close)
+							return parse.produce(tree.node(element(open, false, attributes), cs));
+						else
+							return parse.failBecause(`ending tag '${close}' does not match the opening tag '${open}'`);
+					})
 			)
 		)
 	);
