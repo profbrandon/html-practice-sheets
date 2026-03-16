@@ -1,5 +1,5 @@
 
-function parseLib(list) {
+function parseLib(sum, sigma, list) {
 
 	if (list == undefined) {
 		console.log("Error: cannot initialize 'parseLib' without the 'listLib' dependency.");
@@ -15,86 +15,72 @@ function parseLib(list) {
 		"To feed a string to a parser, use 'parse.run(p, s)'.";
 
 
-// Array Utility
-	const head    = list.head;
-	const tail    = list.tail;
-	const isEmpty = list.isEmpty;	
-	const cons    = list.cons;
-
-	
 // String Utility
-	const toList = str => list.from(str.split(''));
 	const toStr  = a => list.array(a).join('');
 
 
-// Character Utility
-	const isDigit = c => ('0' <= c && c <= '9');
-	const isAlpha = c => ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
-
-
 // Parser Utility
-	const run = (p, s) => p(toList(s));
+	const run = (p, input) => p(input);
 
-	const produce = x => str => {
-		return Object.freeze({
+	const produce = value => input => 
+		Object.freeze({
 			__proto__: null,
 		
-			rest:   str,
-			result: x
+			rest:   input,
+			result: sum.left(value)
 		});
-	};
 
-	const failWith = (field, value) => str => {
-		const obj = Object.create(null);
-		obj.rest   = str;
-		obj.result = undefined;
-		obj[field] = value;
-		return Object.freeze(obj);
-	};
+	const failWith = value => input =>
+		Object.freeze({
+			__proto__: null,
 
-	const hasFailed = output => output.result === undefined;
+			rest:   input,
+			result: sum.right(value)
+		});
 
-	const match = p => (onSuccess, onFailure) => str => {
-		const temp = p(str);
+	const getInput = input => run(produce(input), input);
+	
+	const setInput = value => _ => run(produce(Object.create(null)), value);
 
-		if (hasFailed(temp))
-			return onFailure(temp);
-		else
-			return onSuccess(temp);
-	};
-
-	const bind = (p, mf) => 
-		match(p)(
-			output => mf(output.result)(output.rest),
-			output => output
+	const bind = (p, mf) => input => {
+		const out = run(p, input);
+		return sum.match(out.result)(
+			success => run(mf(success), out.rest),
+			failure => out
 		);
+	};	
 
 	const sequence = (p, q) => bind(p, _ => q);
 
 	const fmap = f => px => bind(px, x => produce(f(x)));
 
 	const traverse = ps => {
-		if (isEmpty(ps))
+		if (list.isEmpty(ps))
 			return produce(list.nil);
 		else 
 			return bind(
-				head(ps),
+				list.head(ps),
 				x => bind(
-					traverse(tail(ps)),
-					xs => produce(cons(x, xs))));
+					traverse(list.tail(ps)),
+					xs => produce(list.cons(x, xs))));
 	};
 
 
 // Failures
-	const fail        =            failWith('message', 'nonspecific failure');
-	const failBecause = message => failWith('message', message);
-	const expected    = x       => failWith('expected', list.produce(x));
+	const parseError  = sigma.create(list.build('nonspecific', 'message', 'expected'));
 
-	const onFailureOf = (p, err) =>
-		match(p)(
-			output => output,
-			output => err(output.rest)
+	const fail        =            failWith(parseError.inject('nonspecific')(null));
+	const failBecause = message => failWith(parseError.inject('message')(message));
+	const expected    = x       => failWith(parseError.inject('expected')(list.build(x)));
+
+	const onFailureOf = (p, err) => input => {
+		const out = run(p, input);
+
+		return sum.match(out.result)(
+			success => out,
+			failure => run(err(failure), out.rest)
 		);
+	}
 
 
 // Generic Combinators
@@ -106,39 +92,46 @@ function parseLib(list) {
 	const exact = (x, px) => 
 		onFailureOf(
 			satisfy(y => x === y, px),
-			expected(x));
+			_ => expected(x));
+
+	const tryCatch = (p, c) => input => {
+		const out = run(p, input);
+
+		return sum.match(out.result)(
+			success => out,
+			failure => run(c(failure), input)
+		);
+	}
 
 	const tryAll = ps => {
-		if (isEmpty(ps))
+		if (list.isEmpty(ps))
 			return failBecause("no parsers provided to 'tryAll'");
 		else 
-			return str => match(head(ps))(
-				success => produce(success.result)(success.rest),
-				failure => 
-					match(tryAll(tail(ps)))(
-						success => produce(success.result)(success.rest),
-						failures => {
-							if (failure.expected != undefined && failures.expected == undefined)
-								return failWith('expected', failure.expected)(str);
-							
-							else if (failure.expected != undefined && failures.expected != undefined)
-								return failWith('expected', list.concat(failure.expected, failures.expected))(str);
-						
-							else
-								return failBecause(failure.message)(str);
-						}
-					)(str) 
-			)(str);
+			return tryCatch(
+				list.head(ps),
+				failure => tryCatch(
+					tryAll(list.tail(ps)),
+					failures => parseError.match(failures)(list.build(
+						pair.build('nonspecific', _  => failWith(failure)),
+						pair.build('message',     _  => failWith(failure)),
+						pair.build('expected',    es => parseError.match(failure)(list.build(
+							pair.build('nonspecific', _  => failWith(failures)),
+							pair.build('message',     _  => failWith(failures)),
+							pair.build('expected',    xs => failWith(parseError.inject('expected')(list.concat(xs, es))))
+						)))
+					))
+				)
+			);
 	};
 
 	const many = px =>
 		tryAll(list.build(
-			bind(px, x => bind(many(px), xs => produce(cons(x, xs)))),
+			bind(px, x => bind(many(px), xs => produce(list.cons(x, xs)))),
 			produce(list.nil)
 		));
 
 	const many1 = px =>
-		bind(px, x => bind(many(px), xs => produce(cons(x, xs))));
+		bind(px, x => bind(many(px), xs => produce(list.cons(x, xs))));
 
 	const between = (left, middle, right) => sequence(
 		left,
@@ -146,17 +139,29 @@ function parseLib(list) {
 	);
 
 
+// String Parsing	
+	const runStr = (p, s) => p(pair.build(0, list.fromStr(s)));
+
+
 // Characters
-	const anyChar = str => {
-		if (isEmpty(str))
-			return expected('a character')(str);
-		else
-			return produce(head(str))(tail(str));
-	};
+	const anyChar = bind(
+		getInput,
+		input => {
+			const pos = pair.fst(input);
+			const str = pair.snd(input);
+
+			if (list.isEmpty(str))
+				return expected('a character');
+			else
+				return sequence(
+					setInput(pair.build(pos + 1, list.tail(str))),
+					produce(list.head(str)));
+		}
+	);
 
 	const character = c => exact(c, anyChar);
 
-	const oneOf = s => tryAll(list.fmap(character)(toList(s)));
+	const oneOf = s => tryAll(list.fmap(character)(list.fromStr(s)));
 
 
 // Numbers
@@ -168,11 +173,11 @@ function parseLib(list) {
 		character('-'), 
 		fmap(n => -n)(positive));
 
-	const integer = tryAll(list.from([positive, negative]));
+	const integer = tryAll(list.build(positive, negative));
 
 	const aFloat = fmap(parseFloat)(
 		bind(
-			tryAll(list.from([character('-'), produce('+')])),
+			tryAll(list.build(character('-'), produce('+'))),
 			sign => bind(
 					fmap(toStr)(many1(digit)),
 					whole => tryAll(list.build(
@@ -191,7 +196,7 @@ function parseLib(list) {
 
 
 // Strings
-	const aString = s => fmap(toStr)(traverse(list.fmap(character)(toList(s))));
+	const aString = s => fmap(toStr)(traverse(list.fmap(character)(list.fromStr(s))));
 
 	const singleQuoted = bind(
 		between(
@@ -216,7 +221,8 @@ function parseLib(list) {
 
 	const aWord = bind(many1(aLetter), cs => produce(toStr(cs)));
 
-// Produce the module
+
+// Library
 	return Object.freeze({
 		__proto__: null,
 
@@ -224,8 +230,8 @@ function parseLib(list) {
 
 		run:         run,
 		produce:     produce,
-		hasFailed:   hasFailed,
-		match:       match,
+		setInput:    setInput,
+		getInput:    getInput,
 		bind:        bind,
 		sequence:    sequence,
 		seq:         sequence,
@@ -233,9 +239,10 @@ function parseLib(list) {
 		traverse:    traverse,
 		between:     between,
 
+		failWith:    failWith,
 		fail:        fail,
 		failBecause: failBecause,
-		error:       failBecause,
+		error:       parseError,
 		onFailureOf: onFailureOf,
 		onFail:      onFailureOf,
 
@@ -243,6 +250,7 @@ function parseLib(list) {
 		ifSatisfies: satisfy,
 		exact:       exact,
 		an:          exact,
+		tryCatch:    tryCatch,
 		tryAll:      tryAll,
 		firstValid:  tryAll,
 		many:        many,
@@ -250,6 +258,8 @@ function parseLib(list) {
 		many1:       many1,
 		repeat1:     many1,
 
+		runStr:      runStr,
+		
 		anyChar:     anyChar,
 		consume:     anyChar,
 		character:   character,

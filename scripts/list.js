@@ -1,7 +1,7 @@
 
-function listLib() {
+function listLib(pair) {
 
-// Frozen constructors
+// Constructors
 	const empty = Object.freeze({
 		__proto__: null,
 
@@ -63,6 +63,9 @@ function listLib() {
 	}
 
 
+	const fromStr = s => from(s.split(''));
+
+
 // List Monad
 	const fail    = empty;
 	const produce = a => cons(a, empty);
@@ -72,10 +75,31 @@ function listLib() {
 
 	const sequence = (xs, ys) => bind(xs, _ => ys);
 
+	const filter = (condx, xs) => 
+		bind(xs, 
+			x => condx(x) ? produce(x) : fail);
 
-// Filter
-	const filter = (condx, xs) => bind(xs, x => condx(x) ? produce(x) : fail);
 
+// Dictionaries
+	function zip(xs, ys) {
+		if (isEmpty(xs) || isEmpty(ys))
+			return empty;
+		else
+			return cons(
+				pair.build(head(xs), head(ys)), 
+				zip(tail(xs), tail(ys))
+			);
+	};
+
+	const lookup = (field, dict) => 
+		foldr(
+			undefined, 
+			(x, r) => 
+				pair.fst(x) === field ? pair.snd(x) : r
+		)(dict); 
+
+
+// Library
 	return Object.freeze({
 		__proto__: null,
 
@@ -112,8 +136,11 @@ function listLib() {
 		filter:   filter,
 
 		from:    from,
+		fromStr: fromStr,
 		array:   array,
-		list:    list,
-		build:   list
+		build:   list,
+
+		zip:     zip,
+		lookup:  lookup
 	});
 }
