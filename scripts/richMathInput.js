@@ -20,6 +20,7 @@ function richMathInputLib(list, tree, expr, history, markup, mathML, parse, win,
 
 		const math = markup.el(
 			"math",
+			false,
 			list.build(
 				markup.attr("display", "block")
 			)
@@ -113,7 +114,7 @@ function richMathInputLib(list, tree, expr, history, markup, mathML, parse, win,
 		// Rendering Methods
 
 		const render = () => {	
-			const exprs    = state.current().exprs;
+			const exprs = state.current().exprs;
 
 			const htmlTree = tree.node(
 				math,
@@ -152,12 +153,8 @@ function richMathInputLib(list, tree, expr, history, markup, mathML, parse, win,
 				needsToUpdate = true;
 			}
 			else if (event.key.length === 1) {
-
 				const key = event.key;
 
-				console.log("pressed: ");
-				console.log(key);
-				
 				if (isDigit(key)) {
 					processDigit(key);
 					needsToUpdate = true;

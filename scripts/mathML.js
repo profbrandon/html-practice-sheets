@@ -3,7 +3,7 @@ function mathMLLib(list, tree, expr, markup, parse) {
 
 	const textContainer = (tag, attributes, txt) => 
 		tree.node(
-			markup.el(tag, attributes), 
+			markup.el(tag, false, attributes), 
 			list.build(tree.leaf(markup.text(txt)))
 		);
 
@@ -38,11 +38,11 @@ function mathMLLib(list, tree, expr, markup, parse) {
 				(expr.symbol(op) === '^'))
 
 				return tree.node(
-					markup.el(expr.symbol(op) === '/' ? 'mfrac' : 'msup', list.nil),
+					markup.el(expr.symbol(op) === '/' ? 'mfrac' : 'msup', false, list.nil),
 					cs);
 			else
 				return tree.node(
-					markup.el('mrow', list.nil),
+					markup.el('mrow', false, list.nil),
 					expr.matchFixity(v.value)(
 						prefixOp  => list.cons(markupExpr(v), cs),
 						infixOp   => list.cons(list.head(cs), list.cons(markupExpr(v), list.tail(cs))),
