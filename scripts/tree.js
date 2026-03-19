@@ -50,7 +50,7 @@ function treeLib(pair, list) {
 		)
 	));
 
-	const addLabel = (tag, value) => labelIf(v => v === value);
+	const addLabel = (tag, value) => addLabelIf(tag, v => v === value);
 
 	const removeLabelsIf = (cond) => fmap(p => pair.match(p)(
 		(v, tags) => pair.build(
@@ -66,9 +66,11 @@ function treeLib(pair, list) {
 		)
 	));
 
-	const removeLabel  = (tag, value) => removeLabelIf(v => v === value, tag);
+	const removeLabel  = (tag, value) => removeLabelIf(tag, v => v === value);
 
-	const removeLabels = (tag, value) => removeLabelsIf(v => v === value, tag);
+	const removeLabels = (tag, value) => removeLabelsIf(tag, v => v === value);
+
+	const stripLabels = removeLabelsIf(x => true);
 
 
 
@@ -142,10 +144,13 @@ function treeLib(pair, list) {
 
 			addIf:       addLabelIf,
 			add:         addLabel,
+
 			removeAllIf: removeLabelsIf,
 			removeAll:   removeLabels,
 			removeIf:    removeLabelIf,
-			remove:      removeLabel
+			remove:      removeLabel,
+
+			strip:       stripLabels
 		}),
 
 		diagram:  treeDiagram,
