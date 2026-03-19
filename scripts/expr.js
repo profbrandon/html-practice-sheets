@@ -45,7 +45,7 @@ function exprLib(pair, list, tree, parse) {
 	const div  = (x, y) => binaryOp('/', infix, x, y);
 	const exp  = (x, y) => binaryOp('^', infix, x, y);
 
-	const placeholder = voidOp('Placeholder', prefix);
+	const placeholder = () => voidOp('Placeholder', prefix);
 
 
 // Accessors
@@ -165,18 +165,11 @@ function exprLib(pair, list, tree, parse) {
 
 
 // Labeling
-	const positionLabel = pos => Object.freeze({
-		__proto__: null,
-
-		name:  'pos',
-		value: pos
-	});
-
 	const labelPosition = e => list.foldr(
 		tree.labels.create(e), 
 		(p, t) => pair.match(p)(
 			(pos, value) => 
-				tree.labels.add(positionLabel(pos), value)(t)
+				tree.labels.add(tree.labels.build('pos', pos), value)(t)
 		)
 	)(list.index(traversalOrder(e)));
 
