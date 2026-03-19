@@ -87,7 +87,7 @@ function parseLib(sum, sigma, list) {
 	const satisfy = (condx, px) => 
 		bind(px, x => condx(x) ? 
 				produce(x) : 
-				failBecause(`the value '${x}' did not satisfy the condition '${condx.name}'`));
+				failBecause(`the value did not satisfy the condition`));
 
 	const exact = (x, px) => 
 		onFailureOf(
@@ -139,25 +139,29 @@ function parseLib(sum, sigma, list) {
 	);
 
 
+// List Parsing
+	const nextElement = bind(
+		getInput,
+		input => {
+			const pos = pair.fst(input);
+			const xs  = pair.snd(input);
+
+			if (list.isEmpty(xs))
+				return expected('an element');
+			else
+				return sequence(
+					setInput(pair.build(pos + 1, tail.list(xs))),
+					produce(list.head(xs)));
+		}
+	);
+	
+
 // String Parsing	
 	const runStr = (p, s) => p(pair.build(0, list.fromStr(s)));
 
 
 // Characters
-	const anyChar = bind(
-		getInput,
-		input => {
-			const pos = pair.fst(input);
-			const str = pair.snd(input);
-
-			if (list.isEmpty(str))
-				return expected('a character');
-			else
-				return sequence(
-					setInput(pair.build(pos + 1, list.tail(str))),
-					produce(list.head(str)));
-		}
-	);
+	const anyChar = onFailureOf(nextElement, _ => expected('a character'));
 
 	const character = c => exact(c, anyChar);
 
@@ -194,8 +198,7 @@ function parseLib(sum, sigma, list) {
 
 	const hexPositive = fmap(a => parseInt('0x' + toStr(a)))(many1(hexDigit));
 
-
-// Strings
+// Specific Strings
 	const aString = s => fmap(toStr)(traverse(list.fmap(character)(list.fromStr(s))));
 
 	const singleQuoted = bind(
@@ -220,6 +223,48 @@ function parseLib(sum, sigma, list) {
 	const aLetter = tryAll(list.build(lowercase, uppercase));
 
 	const aWord = bind(many1(aLetter), cs => produce(toStr(cs)));
+
+
+// Trees
+	const treeInput = sigma.create(list.build('empty', 'tree'));
+
+	const runTree = (p, t) => p(treeInput.inject('tree')(t));
+
+	const getValue = bind(
+		getInput,
+		mt => treeInput.match(mt)(list.build(
+			pair.build('empty', _ => expected('a tree')),
+			pair.build('tree',  t => produce(tree.value(t)))
+		))
+	);
+
+	const getChildren = bind(
+		getInput,
+		mt => treeInput.match(mt)(list.build(
+			pair.build('empty', _ => expected('a tree')),
+			pair.build('tree',  t => produce(tree.children(t)))
+		))
+	);
+
+	const parseLeaf = onFailureOf(
+		sequence(
+			satisfy(list.isEmpty, getChildren),
+			getValue
+		),
+		_ => expected('a leaf')
+	);
+
+	const parseNode = onFailureOf(
+		bind(getValue,
+			v => bind(getChildren,
+				cs => sequence(
+					list.isEmpty(cs) ? fail : produce({}),
+					produce(pair.build(v, cs))
+				)
+			)
+		),
+		_ => expected('a node')
+	);
 
 
 // Library
@@ -258,44 +303,61 @@ function parseLib(sum, sigma, list) {
 		many1:       many1,
 		repeat1:     many1,
 
-		runStr:      runStr,
-		
-		anyChar:     anyChar,
-		consume:     anyChar,
-		character:   character,
-		chr:         character,
-		aChar:       character,
-		oneOf:       oneOf,
+		list: Object.freeze({
+			__proto__: null,
 
-		digit:       digit,
-		aDigit:      digit,
-		positive:    positive,
-		aPositive:   positive,
-		natural:     positive,
-		aNatural:    positive,
-		negative:    negative,
-		aNegative:   negative,
-		integer:     integer,
-		anInteger:   integer,
-		aFloat:      aFloat,
-		decimal:     aFloat,
+			next:        nextElement,
+		}),
 
-		hexDigit:    hexDigit,
-		aHexDigit:   hexDigit,
-		hexPositive: hexPositive,
-		aHexPositive: hexPositive,
+		str: Object.freeze({
+			__proto__: null,
 
-		aString:     aString,
-		str:         aString,
-		singleQuote: singleQuoted,
-		doubleQuote: doubleQuoted,
+			run:      run,
+			
+			anyChar:     anyChar,
+			character:   character,
+			chr:         character,
+			aChar:       character,
+			oneOf:       oneOf,
 
-		lowercase:   lowercase,
-		uppercase:   uppercase,
-		letter:      aLetter,
-		aLetter:     aLetter,
-		aWord:       aWord,
-		word:        aWord
+			digit:       digit,
+			aDigit:      digit,
+			positive:    positive,
+			aPositive:   positive,
+			negative:    negative,
+			aNegative:   negative,
+			integer:     integer,
+			anInteger:   integer,
+			aFloat:      aFloat,
+
+			hexDigit:    hexDigit,
+			hexPositive: hexPositive,
+
+			aString:     aString,
+			str:         aString,
+			singleQuote: singleQuoted,
+			doubleQuote: doubleQuoted,
+
+			lowercase:   lowercase,
+			uppercase:   uppercase,
+			letter:      aLetter,
+			aLetter:     aLetter,
+			aWord:       aWord,
+			word:        aWord
+		}),
+
+		tree: Object.freeze({
+			__proto__: null,
+
+			run:      runTree,
+			input:    treeInput,
+
+			value:    getValue,
+			children: getChildren,
+
+			leaf:     parseLeaf,
+			node:     parseNode
+		})
 	});
 }
 
