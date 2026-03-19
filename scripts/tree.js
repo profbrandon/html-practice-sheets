@@ -43,14 +43,14 @@ function treeLib(pair, list) {
 // Aux
 	const labeledTree = fmap(v => pair.build(v, list.nil));
 
-	const addLabelIf = (cond, tag) => fmap(p => pair.match(p)(
+	const addLabelIf = (tag, cond) => fmap(p => pair.match(p)(
 		(v, tags) => pair.build(
 			v, 
 			cond(v) ? list.cons(tag, tags) : tags
 		)
 	));
 
-	const addLabel = (value, tag) => labelIf(v => v === value);
+	const addLabel = (tag, value) => labelIf(v => v === value);
 
 	const removeLabelsIf = (cond) => fmap(p => pair.match(p)(
 		(v, tags) => pair.build(
@@ -59,21 +59,20 @@ function treeLib(pair, list) {
 		)
 	));
 
-	const removeLabelIf = (cond, tag) => fmap(p => pair.match(p)(
+	const removeLabelIf = (tag, cond) => fmap(p => pair.match(p)(
 		(v, tags) => pair.build(
 			v,
 			cond(v) ? list.filter(x => x !== tag)(tags) : tags
 		)
 	));
 
-	const removeLabel  = (value, tag) => removeLabelIf(v => v === value, tag);
+	const removeLabel  = (tag, value) => removeLabelIf(v => v === value, tag);
 
-	const removeLabels = (value, tag) => removeLabelsIf(v => v === value, tag);
+	const removeLabels = (tag, value) => removeLabelsIf(v => v === value, tag);
 
 
 
 // String Diagram
-
 	const markTerminals = foldr(
 		v       => leaf(pair.build(v, false)),
 		(v, cs) => node(
