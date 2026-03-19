@@ -174,7 +174,7 @@ function exprLib(list, tree, parse) {
 			type:       type,
 			value:      value,
 			symbol:     symbol,
-			fixity:     fixity
+			fixity:     fixity,
 
 			traversal:   traversalOrder
 		}),
