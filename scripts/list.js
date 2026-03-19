@@ -53,6 +53,15 @@ function listLib(pair) {
 
 	const length = foldr(0, (_, n) => n + 1);
 
+	const generate = (seed, f, n) => {
+		switch(n) {
+			case 0:
+				return empty;
+			default:
+				return cons(seed, fmap(f)(generate(seed, f, n - 1)));
+		}
+	};
+
 
 // Conversions
 	const from  = arr => arr.reduceRight((as, a) => cons(a, as), empty);
@@ -96,7 +105,9 @@ function listLib(pair) {
 			undefined, 
 			(x, r) => 
 				pair.fst(x) === field ? pair.snd(x) : r
-		)(dict); 
+		)(dict);
+
+	const index = xs => zip(generate(0, x => x + 1, length(xs)), xs);
 
 
 // Library
@@ -127,6 +138,8 @@ function listLib(pair) {
 		concat:     concat,
 		reverse:    reverse,
 
+		generate:   generate,
+
 		produce:  produce,
 		join:     join,
 		bind:     bind,
@@ -141,6 +154,7 @@ function listLib(pair) {
 		build:   list,
 
 		zip:     zip,
-		lookup:  lookup
+		lookup:  lookup,
+		index:   index
 	});
 }
