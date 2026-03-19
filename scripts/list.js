@@ -66,6 +66,10 @@ function listLib(pair) {
 
 	const at = (n, xs) => head(drop(n)(xs));
 
+	const take = n => xs => n === 0 ? empty : cons(head(xs), take(n - 1)(tail(xs)));
+
+	const insert = (n, x, xs) => concat(take(n)(xs), cons(x, drop(n)(xs)));
+
 
 // Conversions
 	const from  = arr => arr.reduceRight((as, a) => cons(a, as), empty);
@@ -131,11 +135,13 @@ function listLib(pair) {
 
 		cons:    cons,
 		append:  append,
+		insert:  insert,
 
 		length:  length,
 		len:     length,
 
 		drop:    drop,
+		take:    take,
 		at:      at,
 
 		foldr:      foldr,
