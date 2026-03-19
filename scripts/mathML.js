@@ -1,6 +1,7 @@
 
 function mathMLLib(list, tree, expr, markup, parse) {
 
+// Markup Generation
 	const textContainer = (tag, attributes, txt) => 
 		tree.node(
 			markup.el(tag, false, attributes), 
@@ -11,7 +12,7 @@ function mathMLLib(list, tree, expr, markup, parse) {
 		n   => textContainer('mn', list.nil, n), 
 		v   => textContainer('mi', list.nil, v),
 		vop => {
-			if (expr.symbol(vop) === 'Placeholder')
+			if (expr.get.symbol(vop) === 'Placeholder')
 				return textContainer(
 					'span', 
 					list.build(
@@ -22,10 +23,10 @@ function mathMLLib(list, tree, expr, markup, parse) {
 					),
 					'&nbsp;');
 			else
-				return textContainer('mo', list.nil, expr.symbol(vop))
+				return textContainer('mo', list.nil, expr.get.symbol(vop))
 		},
-		uop => textContainer('mo', list.nil, expr.symbol(uop)),
-		bop => textContainer('mo', list.nil, expr.symbol(bop))
+		uop => textContainer('mo', list.nil, expr.get.symbol(uop)),
+		bop => textContainer('mo', list.nil, expr.get.symbol(bop))
 	);
 
 	const markupExprTree = tree.foldr(
@@ -33,12 +34,12 @@ function mathMLLib(list, tree, expr, markup, parse) {
 		(v, cs) => {
 			const op = v.value;
 
-			if (expr.fixity(op) === expr.infix &&
-				(expr.symbol(op) === '/') ||
-				(expr.symbol(op) === '^'))
+			if (expr.get.fixity(op) === expr.infix &&
+				(expr.get.symbol(op) === '/') ||
+				(expr.get.symbol(op) === '^'))
 
 				return tree.node(
-					markup.el(expr.symbol(op) === '/' ? 'mfrac' : 'msup', false, list.nil),
+					markup.el(expr.get.symbol(op) === '/' ? 'mfrac' : 'msup', false, list.nil),
 					cs);
 			else
 				return tree.node(
@@ -52,6 +53,8 @@ function mathMLLib(list, tree, expr, markup, parse) {
 		}
 	);
 
+
+// Library
 	return Object.freeze({
 		__proto__: null,
 
