@@ -176,7 +176,7 @@ function exprLib(list, tree, parse) {
 			symbol:     symbol,
 			fixity:     fixity
 
-			traversal:   traversalOrder,	
+			traversal:   traversalOrder
 		}),
 
 		render: Object.freeze({
