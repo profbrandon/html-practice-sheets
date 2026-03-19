@@ -41,6 +41,13 @@ function treeLib(pair, list) {
 
 
 // Aux
+	const buildLabel = (name, value) => Object.freeze({
+		__proto__: null,
+
+		name: name,
+		value: value
+	});
+
 	const labeledTree = fmap(v => pair.build(v, list.nil));
 
 	const addLabelIf = (tag, cond) => fmap(p => pair.match(p)(
@@ -71,6 +78,10 @@ function treeLib(pair, list) {
 	const removeLabels = (tag, value) => removeLabelsIf(tag, v => v === value);
 
 	const stripLabels = removeLabelsIf(x => true);
+
+	const getLabels = pair.snd;
+
+	const getValue = pair.fst;
 
 
 
@@ -140,6 +151,8 @@ function treeLib(pair, list) {
 		labels: Object.freeze({
 			__proto__: null,
 
+			build:       buildLabel,
+
 			create:      labeledTree,
 
 			addIf:       addLabelIf,
@@ -150,7 +163,10 @@ function treeLib(pair, list) {
 			removeIf:    removeLabelIf,
 			remove:      removeLabel,
 
-			strip:       stripLabels
+			strip:       stripLabels,
+
+			getValue:    getValue,
+			getLabels:   getLabels
 		}),
 
 		diagram:  treeDiagram,
