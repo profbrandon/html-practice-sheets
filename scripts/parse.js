@@ -150,7 +150,7 @@ function parseLib(sum, sigma, list) {
 				return expected('an element');
 			else
 				return sequence(
-					setInput(pair.build(pos + 1, tail.list(xs))),
+					setInput(pair.build(pos + 1, list.tail(xs))),
 					produce(list.head(xs)));
 		}
 	);
@@ -312,7 +312,7 @@ function parseLib(sum, sigma, list) {
 		str: Object.freeze({
 			__proto__: null,
 
-			run:      run,
+			run:         runStr,
 			
 			anyChar:     anyChar,
 			character:   character,
