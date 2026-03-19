@@ -1,5 +1,5 @@
 
-function exprLib(list, tree, parse) {
+function exprLib(pair, list, tree, parse) {
 
 // Expression Values
 	const exprValue = (type, value) => Object.freeze({
@@ -164,6 +164,23 @@ function exprLib(list, tree, parse) {
 	);
 
 
+// Labeling
+	const positionLabel = pos => Object.freeze({
+		__proto__: null,
+
+		name:  'pos',
+		value: pos
+	});
+
+	const labelPosition = e => list.foldr(
+		tree.labels.create(e), 
+		(p, t) => pair.match(p)(
+			(pos, value) => 
+				tree.labels.add(positionLabel(pos), value)(t)
+		)
+	)(list.index(traversalOrder(e)));
+
+
 // Library
 	return Object.freeze({
 		__proto__: null,
@@ -185,6 +202,12 @@ function exprLib(list, tree, parse) {
 			header:     header,
 			asString:   asString
 		}),	
+
+		label: Object.freeze({
+			__proto__: null,
+
+			pos: labelPosition
+		}),
 
 		prefix:     prefix,
 		infix:      infix,
