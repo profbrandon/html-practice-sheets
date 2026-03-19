@@ -96,6 +96,14 @@ function exprLib(list, tree, parse) {
 			}
 		};
 
+	const isOperator = ev => matchType(ev)(
+		number   => false, 
+		variable => false, 
+		voidOp   => true, 
+		unaryOp  => true,
+		binaryOp => true
+	);
+
 	const matchFixity = op => (onPrefix, onInfix, onPostfix) => {
 		switch(op.fixity) {
 			case prefix:
@@ -109,13 +117,72 @@ function exprLib(list, tree, parse) {
 		}
 	};
 
+
+// Rendering
+	const header = ev => matchType(ev)(
+		number   => 'num: ' + number.toString(),
+		variable => 'var: ' + variable,
+		voidOp   => fixity(voidOp)   + ' op(0): ' + symbol(voidOp),
+		unaryOp  => fixity(unaryOp)  + ' op(1): ' + symbol(unaryOp),
+		binaryOp => fixity(binaryOp) + ' op(2): ' + symbol(binaryOp)
+	);
+
+	const asString = ev => matchType(ev)(
+		number   => number.toString(),
+		variable => variable,
+		voidOp   => symbol(voidOp),
+		unaryOp  => symbol(unaryOp),
+		binaryOp => symbol(binaryOp)
+	);
+
+
+// Traversal
+	const traversalOrder = tree.foldr(
+		ev       => list.produce(ev),
+		(ev, css) => {
+			const cs = list.join(css);
+
+			return matchType(ev)(
+				// Leaves don't need definitions
+				number   => undefined,
+				variable => undefined,
+				voidOp   => undefined,
+
+				// Branches
+				unaryOp  => matchFixity(unaryOp)(
+					prefix  => list.cons(ev, cs), 
+					infix   => undefined,
+					postfix => list.append(ev, cs) 
+				),
+				binaryOp => matchFixity(binaryOp)(
+					prefix  => list.cons(ev, cs),
+					infix   => list.concat(list.head(css), list.cons(ev, list.join(list.tail(css)))),
+					postfix => list.append(ev, cs)
+				)
+			)
+		}
+	);
+
+
+// Library
 	return Object.freeze({
 		__proto__: null,
 
-		type:       type,
-		value:      value,
-		symbol:     symbol,
-		fixity:     fixity,
+		get: Object.freeze({
+			__proto__: null,
+
+			type:       type,
+			value:      value,
+			symbol:     symbol,
+			fixity:     fixity
+		}),
+
+		render: Object.freeze({
+			__proto__: null,
+
+			header:     header,
+			asString:   asString
+		}),	
 
 		prefix:     prefix,
 		infix:      infix,
@@ -124,12 +191,16 @@ function exprLib(list, tree, parse) {
 		voidOp:     voidOp,
 		unaryOp:    unaryOp,
 		binaryOp:   binaryOp,
+		isOperator: isOperator,
+		isOp:       isOperator,
 
 		lookupOp:   lookupOp,
 
 		matchType:   matchType,
 		matchFixity: matchFixity,
 
+		traversal:   traversalOrder,	
+		
 		number:     number,
 		num:        number,
 		
