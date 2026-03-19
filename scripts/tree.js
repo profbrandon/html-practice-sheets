@@ -1,4 +1,4 @@
-function treeLib(list) {
+function treeLib(pair, list) {
 
 // Trees
 	const node = (value, children) => {
@@ -18,14 +18,12 @@ function treeLib(list) {
 
 	const children = tree => tree.children; 
 
-	function foldr(onLeaf, onBranch) {
-		return tree => {
-			if (isLeaf(tree))
-				return onLeaf(tree.value);
-			else
-				return onBranch(tree.value, list.fmap(foldr(onLeaf, onBranch))(tree.children));
-		};
-	}
+	const foldr = (onLeaf, onBranch) => tree => {
+		if (isLeaf(tree))
+			return onLeaf(tree.value);
+		else
+			return onBranch(tree.value, list.fmap(foldr(onLeaf, onBranch))(tree.children));
+	};
 
 	const fmap = f => foldr(v => leaf(f(v)), (v, c) => node(f(v), c));
 
@@ -42,35 +40,65 @@ function treeLib(list) {
 	);
 
 
+// Aux
+	const labeledTree = fmap(v => pair.build(v, list.nil));
+
+	const addLabelIf = (cond, tag) => fmap(p => pair.match(p)(
+		(v, tags) => pair.build(
+			v, 
+			cond(v) ? list.cons(tag, tags) : tags
+		)
+	));
+
+	const addLabel = (value, tag) => labelIf(v => v === value);
+
+	const removeLabelsIf = (cond) => fmap(p => pair.match(p)(
+		(v, tags) => pair.build(
+			v, 
+			cond(v) ? list.nil : tags
+		)
+	));
+
+	const removeLabelIf = (cond, tag) => fmap(p => pair.match(p)(
+		(v, tags) => pair.build(
+			v,
+			cond(v) ? list.filter(x => x !== tag)(tags) : tags
+		)
+	));
+
+	const removeLabel  = (value, tag) => removeLabelIf(v => v === value, tag);
+
+	const removeLabels = (value, tag) => removeLabelsIf(v => v === value, tag);
+
+
+
 // String Diagram
-	const pair = (fst, snd) => {
-		return {
-			__proto__: null,
-			
-			fst: fst,
-			snd: snd
-		};
-	};
 
 	const markTerminals = foldr(
-		v => leaf(pair(v, false)),
-		(v, cs) => node(pair(v, false), list.append(node(pair(list.last(cs).value.fst, true), list.last(cs).children), list.init(cs)))
+		v       => leaf(pair.build(v, false)),
+		(v, cs) => node(
+			pair.build(v, false), 
+			list.append(
+				node(pair.build(
+					pair.fst(list.last(cs).value), true), 
+					list.last(cs).children), 
+				list.init(cs)))
 	);
 
 	const pipeCodes = tree => fmap(b => b ? '\u2514' : '\u251C')(markTerminals(tree));
 
 	const subTreeDiagram = tree => 
 		foldr(
-			p => list.build((p.snd ? '\u2514' : '\u251C') + ' ' + p.fst),
+			p => list.build((pair.snd(p) ? '\u2514' : '\u251C') + ' ' + pair.fst(p)),
 			(p, cs) => {
-				if (p.snd)
-					return list.cons('\u2514' + ' ' + p.fst, list.fmap(q => '  ' + q)(list.join(cs)));
+				if (pair.snd(p))
+					return list.cons('\u2514' + ' ' + pair.fst(p), list.fmap(q => '  ' + q)(list.join(cs)));
 				else
-					return list.cons('\u251C' + ' ' + p.fst, list.fmap(q => '\u2502' + ' ' + q)(list.join(cs)));
+					return list.cons('\u251C' + ' ' + pair.fst(p), list.fmap(q => '\u2502' + ' ' + q)(list.join(cs)));
 			}
 		)(markTerminals(tree));
 
-	function treeDiagram(tree) {
+	const treeDiagram = (tree) => {
 		const front = '\u2514' + ' ' + tree.value;
 
 		if (isLeaf(tree))
@@ -83,7 +111,7 @@ function treeLib(list) {
 					treeDiagram(list.last(tree.children))
 				)))
 			);
-	}
+	};
 
 	
 	const print = (tree, acceptor) => {
@@ -107,6 +135,19 @@ function treeLib(list) {
 
 		polish:   depthFirstPolish,
 		rPolish:  depthFirstReversePolish,
+
+		labels: Object.freeze({
+			__proto__: null,
+
+			create:      labeledTree,
+
+			addIf:       addLabelIf,
+			add:         addLabel,
+			removeAllIf: removeLabelsIf,
+			removeAll:   removeLabels,
+			removeIf:    removeLabelIf,
+			remove:      removeLabel
+		}),
 
 		diagram:  treeDiagram,
 
