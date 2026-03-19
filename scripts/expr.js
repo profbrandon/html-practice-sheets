@@ -175,6 +175,8 @@ function exprLib(list, tree, parse) {
 			value:      value,
 			symbol:     symbol,
 			fixity:     fixity
+
+			traversal:   traversalOrder,	
 		}),
 
 		render: Object.freeze({
@@ -198,8 +200,6 @@ function exprLib(list, tree, parse) {
 
 		matchType:   matchType,
 		matchFixity: matchFixity,
-
-		traversal:   traversalOrder,	
 		
 		number:     number,
 		num:        number,
