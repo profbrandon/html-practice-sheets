@@ -30,9 +30,16 @@ function treeLib(list) {
 	const fmap = f => foldr(v => leaf(f(v)), (v, c) => node(f(v), c));
 
 	
-// Tree Processing
-	const depthFirstPolish        = foldr(list.produce, (v, c) => list.cons(v, list.join(c)));	
-	const depthFirstReversePolish = foldr(list.produce, (v, c) => list.append(v, list.join(c)));
+// Traversal
+	const depthFirstPolish = foldr(
+		list.produce, 
+		(v, c) => list.cons(v, list.join(c))
+	);
+
+	const depthFirstReversePolish = foldr(
+		list.produce, 
+		(v, c) => list.append(v, list.join(c))
+	);
 
 
 // String Diagram
@@ -84,7 +91,7 @@ function treeLib(list) {
 	};
 
 
-
+// Library
 	return Object.freeze({
 		__proto__: null,
 
