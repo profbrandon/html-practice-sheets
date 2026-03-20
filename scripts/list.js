@@ -62,6 +62,10 @@ function listLib(pair) {
 		}
 	};
 
+	const drop = n => xs => n === 0 ? xs : drop(n - 1)(tail(xs));
+
+	const at = (n, xs) => head(drop(n)(xs));
+
 
 // Conversions
 	const from  = arr => arr.reduceRight((as, a) => cons(a, as), empty);
@@ -130,6 +134,9 @@ function listLib(pair) {
 
 		length:  length,
 		len:     length,
+
+		drop:    drop,
+		at:      at,
 
 		foldr:      foldr,
 		foldl:      foldl,
