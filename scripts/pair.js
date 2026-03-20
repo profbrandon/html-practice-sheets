@@ -23,6 +23,8 @@ function pairLib() {
 			(a, b) => pair(f(a), g(b))
 		);
 
+	const swap = p => match(p)((a, b) => pair.build(b, a));
+
 
 // Library
 	return Object.freeze({
@@ -37,6 +39,8 @@ function pairLib() {
 		second: snd,
 		snd:    snd,
 
-		fmap:   fmap
+		fmap:   fmap,
+
+		swap:   swap
 	});
 }

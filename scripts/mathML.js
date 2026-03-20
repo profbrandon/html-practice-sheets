@@ -1,60 +1,68 @@
 
-function mathMLLib(list, tree, expr, markup, parse) {
+function mathMLLib(pair, list, tree, expr, markup, parse) {
 
+// Markup Generation
 	const textContainer = (tag, attributes, txt) => 
 		tree.node(
 			markup.el(tag, false, attributes), 
 			list.build(tree.leaf(markup.text(txt)))
 		);
 
-	const markupExpr = ev => expr.matchType(ev)(
-		n   => textContainer('mn', list.nil, n), 
-		v   => textContainer('mi', list.nil, v),
+	const processTags = list.fmap(tag => markup.attr(tag.name, tag.value));
+
+	const markupExpr = (ev, tags) => expr.matchType(ev)(
+		n   => textContainer('mn', processTags(tags), n), 
+		v   => textContainer('mi', processTags(tags), v),
 		vop => {
-			if (expr.symbol(vop) === 'Placeholder')
+			if (expr.get.symbol(vop) === 'Placeholder')
 				return textContainer(
-					'span', 
-					list.build(
+					'div', 
+					list.cons(
 						markup.attr(
 							'class',
 							'placeholder'
-						)
+						),
+						processTags(tags)
 					),
 					'&nbsp;');
 			else
-				return textContainer('mo', list.nil, expr.symbol(vop))
+				return textContainer('mo', processTags(tags), expr.get.symbol(vop))
 		},
-		uop => textContainer('mo', list.nil, expr.symbol(uop)),
-		bop => textContainer('mo', list.nil, expr.symbol(bop))
+		uop => textContainer('mo', processTags(tags), expr.get.symbol(uop)),
+		bop => textContainer('mo', processTags(tags), expr.get.symbol(bop))
 	);
 
 	const markupExprTree = tree.foldr(
-		markupExpr,
+		p => pair.match(p)((ev, tags) => markupExpr(ev, tags)),
 		(v, cs) => {
-			const op = v.value;
+			const tags = tree.labels.getLabels(v);
+			const ev = tree.labels.getValue(v);
+			const op = ev.value;
 
-			if (expr.fixity(op) === expr.infix &&
-				(expr.symbol(op) === '/') ||
-				(expr.symbol(op) === '^'))
+			if (expr.get.fixity(op) === expr.infix &&
+				(expr.get.symbol(op) === '/') ||
+				(expr.get.symbol(op) === '^'))
 
 				return tree.node(
-					markup.el(expr.symbol(op) === '/' ? 'mfrac' : 'msup', false, list.nil),
+					markup.el(expr.get.symbol(op) === '/' ? 'mfrac' : 'msup', false, processTags(tags)),
 					cs);
 			else
 				return tree.node(
 					markup.el('mrow', false, list.nil),
-					expr.matchFixity(v.value)(
-						prefixOp  => list.cons(markupExpr(v), cs),
-						infixOp   => list.cons(list.head(cs), list.cons(markupExpr(v), list.tail(cs))),
-						postfixOp => list.append(markupExpr(v), cs)
+					expr.matchFixity(op)(
+						prefixOp  => list.cons(markupExpr(ev, tags), cs),
+						infixOp   => list.cons(list.head(cs), list.cons(markupExpr(ev, tags), list.tail(cs))),
+						postfixOp => list.append(markupExpr(ev, tags), cs)
 					)
 				);
 		}
 	);
 
+
+// Library
 	return Object.freeze({
 		__proto__: null,
 
-		markupExprTree: markupExprTree
+		markupLabeledExprTree: markupExprTree
 	})
 }

@@ -53,6 +53,23 @@ function listLib(pair) {
 
 	const length = foldr(0, (_, n) => n + 1);
 
+	const generate = (seed, f, n) => {
+		switch(n) {
+			case 0:
+				return empty;
+			default:
+				return cons(seed, fmap(f)(generate(seed, f, n - 1)));
+		}
+	};
+
+	const drop = n => xs => n === 0 ? xs : drop(n - 1)(tail(xs));
+
+	const at = (n, xs) => head(drop(n)(xs));
+
+	const take = n => xs => n === 0 ? empty : cons(head(xs), take(n - 1)(tail(xs)));
+
+	const insert = (n, x, xs) => concat(take(n)(xs), cons(x, drop(n)(xs)));
+
 
 // Conversions
 	const from  = arr => arr.reduceRight((as, a) => cons(a, as), empty);
@@ -96,8 +113,13 @@ function listLib(pair) {
 			undefined, 
 			(x, r) => 
 				pair.fst(x) === field ? pair.snd(x) : r
-		)(dict); 
+		)(dict);
 
+	const index = xs => zip(generate(0, x => x + 1, length(xs)), xs);
+
+
+// Aux
+	const contains = (condx, xs) => !isEmpty(filter(condx, xs));
 
 // Library
 	return Object.freeze({
@@ -116,9 +138,14 @@ function listLib(pair) {
 
 		cons:    cons,
 		append:  append,
+		insert:  insert,
 
 		length:  length,
 		len:     length,
+
+		drop:    drop,
+		take:    take,
+		at:      at,
 
 		foldr:      foldr,
 		foldl:      foldl,
@@ -126,6 +153,8 @@ function listLib(pair) {
 		fmap:       fmap,
 		concat:     concat,
 		reverse:    reverse,
+
+		generate:   generate,
 
 		produce:  produce,
 		join:     join,
@@ -141,6 +170,9 @@ function listLib(pair) {
 		build:   list,
 
 		zip:     zip,
-		lookup:  lookup
+		lookup:  lookup,
+		index:   index,
+
+		contains: contains
 	});
 }

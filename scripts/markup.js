@@ -21,6 +21,12 @@ function markupLib(pair, list, tree, parse) {
 		};
 	};
 
+	const tag        = e => e.tag;
+	const closed     = e => e.closed;
+	const attributes = e => e.attributes;
+
+	const rawText = e => list.head(e.attributes).value;
+
 	const text = str => element('text:', true, list.build(attribute('value', str)));
 
 
@@ -60,31 +66,31 @@ function markupLib(pair, list, tree, parse) {
 // Parsing Element Trees
 	const parseJSString = parse.tryAll(
 		list.build(
-			parse.singleQuote, 
-			parse.doubleQuote)
+			parse.str.singleQuote, 
+			parse.str.doubleQuote)
 	);
 
 	const parseAttribute = parse.bind(
-		parse.aWord,
+		parse.str.aWord,
 		name => parse.seq(
-			parse.aChar('='),
+			parse.str.aChar('='),
 			parse.bind(
 				parseJSString,
 				value => parse.produce(attribute(name, value)))));
 
 	const parseTagAttributes = parse.bind(
-		parse.aWord,
+		parse.str.aWord,
 		tag => parse.bind(
-			parse.many(parse.seq(parse.aChar(' '), parseAttribute)),
+			parse.many(parse.seq(parse.str.aChar(' '), parseAttribute)),
 			as => parse.produce(pair.build(tag, as))
 		)
 	);
 
-	const parseOpeningTag = parse.between(parse.aChar('<'), parseTagAttributes, parse.aChar('>'));
+	const parseOpeningTag = parse.between(parse.str.aChar('<'), parseTagAttributes, parse.str.aChar('>'));
 
-	const parseClosingTag = parse.between(parse.aString('</'), parse.aWord, parse.aChar('>'));
+	const parseClosingTag = parse.between(parse.str.aString('</'), parse.str.aWord, parse.str.aChar('>'));
 
-	const parseSelfClosingTag = parse.between(parse.aChar('<'), parseTagAttributes, parse.aString('/>'));
+	const parseSelfClosingTag = parse.between(parse.str.aChar('<'), parseTagAttributes, parse.str.aString('/>'));
 
 	const parseText = parse.bind(
 		// Parse any characters that are not part of an opening or closing tag
@@ -94,7 +100,7 @@ function markupLib(pair, list, tree, parse) {
 					parse.seq(
 						parse.tryAll(list.build(parseOpeningTag, parseClosingTag)), 
 						parse.produce('')),
-					_ => parse.anyChar
+					_ => parse.str.anyChar
 				),
 				s => s.length === 0 ? parse.fail : parse.produce(s))),
 		// Wrap those characters in a 'text:' node.
@@ -134,7 +140,7 @@ function markupLib(pair, list, tree, parse) {
 
 	const fix = (f) => parse.bind(
 		parse.produce(g => g(fix(g))),
-		q => q(f)		
+		q => q(f)
 	);
 
 	const parseTree = parseNormalElement(
@@ -158,6 +164,11 @@ function markupLib(pair, list, tree, parse) {
 		attr:       attribute,
 		element:    element,
 		el:         element,
+
+		tag:        tag,
+		closed:     closed,
+		attributes: attributes,
+		rawText:    rawText,
 
 		text:       text,
 
