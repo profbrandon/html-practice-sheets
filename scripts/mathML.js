@@ -16,7 +16,7 @@ function mathMLLib(pair, list, tree, expr, markup, parse) {
 		vop => {
 			if (expr.get.symbol(vop) === 'Placeholder')
 				return textContainer(
-					'span', 
+					'div', 
 					list.cons(
 						markup.attr(
 							'class',
