@@ -58,13 +58,33 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 		);
 
 
+		
+		const nontraversable = list.build('^', '/');
+
+
+		// Lengths
+		const getExprLengths = () => {
+			return list.fmap(
+				t => list.length(
+					expr.get.traversal(tree.labels.addIf(
+						expr.label.skip,
+						ev => expr.isOp(ev) && 
+							list.contains(
+								x => x === ev.value.symbol,
+								nontraversable
+							)
+					)(tree.labels.create(t)))
+				)
+			)(state.current().exprs);
+		}
+
 
 		// Cursor Position
 		const updateCursorPos = () => {
 			const pos   = state.current().pos;
 			const exprs = state.current().exprs;
 			const len   = list.length(exprs);
-			const exprLengths = list.append(0, list.fmap(t => list.length(tree.polish(t)))(exprs));
+			const exprLengths = getExprLengths();
 
 			// Prepare the nodes
 			const allNodes = doc.querySelectorAll(`[pos]`);
@@ -72,36 +92,17 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 
 			if (allNodes.length === 0) return;
 
-			const tmp = doc.querySelectorAll(`[pos="${pos.treePos}"]`);
-			const nodeArray = [];
-
-			for (let i = 0; i < tmp.length; ++i)
-				nodeArray.push(tmp[i]);
-
-			const nodes = list.from(nodeArray);
-
-
-			// Find the node
-			const indices = list.fmap(pair.fst)(
-				list.filter(
-					p => pair.match(p)(
-						(i, v) => v > pos.treePos
-					), 
-					list.index(exprLengths)
-				)
-			);
-
-			const indexedNodes = list.zip(indices, nodes);
+			const targetNode = doc.querySelector(`[expos="${pos.exprPos}"][pos="${pos.treePos}"]`);
 
 			const atEnd = pos.exprPos >= len;
-			const node  = atEnd ? lastNode : list.lookup(pos.exprPos, indexedNodes);
-
+			const node  = atEnd ? lastNode : targetNode;
 
 			// Select the node
 			const range     = doc.createRange();
 			const selection = win.getSelection();
 
-			range.selectNode(node);
+			range.setStart(node, pos.offsetPos);
+			range.setEnd(node, pos.offsetPos);
 			selection.removeAllRanges();
 			selection.addRange(range);
 
@@ -117,9 +118,11 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 			const pos   = state.current().pos;
 			const exprs = state.current().exprs;
 
+			const newPos = list.length(exprs) === 0 ? 0 : pos.exprPos + 1;
+
 			const action = act.prod(
 				list.build(
-					act.assoc('pos', act.set(pos, createPos(pos.exprPos + 1, 0, 0))),
+					act.assoc('pos', act.set(pos, createPos(newPos, 0, 0))),
 					act.assoc('exprs', act.set(exprs, list.insert(pos.exprPos, e, exprs)))
 				)
 			);
@@ -181,7 +184,7 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 			const pos   = state.current().pos;
 			const exprs = state.current().exprs;
 			const len   = list.length(exprs);
-			const exprLengths = list.append(0, list.fmap(t => list.length(tree.polish(t)))(exprs));
+			const exprLengths = getExprLengths();
 
 			if (pos.treePos < list.at(pos.exprPos, exprLengths) - 1) {
 				setPosition(
@@ -190,7 +193,7 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 					pos.offsetPos
 				);
 			}
-			else if (pos.exprPos < len) {
+			else if (pos.exprPos < len - 1) {
 				setPosition(
 					pos.exprPos + 1,
 					0,
@@ -203,7 +206,7 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 			const pos   = state.current().pos;
 			const exprs = state.current().exprs;
 			const len   = list.length(exprs);
-			const exprLengths = list.append(0, list.fmap(t => list.length(tree.polish(t)))(exprs));
+			const exprLengths = getExprLengths();
 
 			if (pos.treePos > 0) {
 				setPosition(
@@ -229,15 +232,46 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 
 		// Rendering Methods
 
-		const render = () => {	
+		const render = () => {
 			const exprs = state.current().exprs;
 
 			if (list.isEmpty(exprs))
 				return startText.outerHTML;
 
+
+			const treePosLabeled = list.bind(
+				exprs,
+				e => list.produce(
+					expr.label.pos(tree.labels.addIf(	
+						expr.label.skip,
+						ev => expr.isOp(ev) && 
+							list.contains(
+								x => x == ev.value.symbol,
+								nontraversable
+							)
+					)(tree.labels.create(e)))
+				),
+			);
+
+			const exprPosLabeled = list.bind(
+				list.index(treePosLabeled),
+				p => pair.match(p)(
+					(i, e) => list.produce(
+						tree.labels.addIf(
+							tree.labels.build('expos', i), 
+							_ => true
+						)(
+						tree.labels.removeIf(
+							expr.label.skip,
+							_ => true
+						)
+						(e)))
+				)
+			);
+
 			const htmlTree = tree.node(
 				math,
-				list.fmap(mathML.markupLabeledExprTree)(list.fmap(expr.label.pos)(exprs))
+				list.fmap(mathML.markupLabeledExprTree)(exprPosLabeled)
 			);
 
 			return markup.renderTree(htmlTree);
@@ -254,6 +288,25 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 		container.onclick = (event) => {
 			event.preventDefault();	
 			container.focus();
+
+			const selection = win.getSelection();
+			const node      = selection.focusNode.parentNode;
+			const posAttr   = node.getAttribute('pos');
+			const exposAttr = node.getAttribute('expos');
+
+			container.innerHTML = render();
+
+			if (posAttr != null && exposAttr != null) {
+				const pos   = parseInt(posAttr);
+				const expos = parseInt(exposAttr);
+
+				if (selection.focusOffset === node.textContent.length)
+					setPosition(expos, pos + 1, 0);
+				else
+					setPosition(expos, pos, selection.focusOffset);
+
+				updateCursorPos();
+			}
 		}
 
 		container.onkeydown = (event) => {

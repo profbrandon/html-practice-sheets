@@ -137,14 +137,14 @@ function exprLib(pair, list, tree, parse) {
 
 
 // Traversal
+	const skipLabel = tree.labels.build('skip', null);
+
 	const traversalOrder = tree.foldr(
 		taggedEv  => list.produce(taggedEv),
 		(taggedEv, css) => {
 			const cs = list.join(css);
 
-			const dontTraverse = tag => 
-				tag.name  === 'traverse' && 
-				tag.value === false;
+			const dontTraverse = tag => tag === skipLabel;
 
 			const skip = list.contains(dontTraverse, tree.labels.getLabels(taggedEv))
 
@@ -212,6 +212,8 @@ function exprLib(pair, list, tree, parse) {
 
 		label: Object.freeze({
 			__proto__: null,
+
+			skip: skipLabel,
 
 			pos: labelPosition
 		}),
