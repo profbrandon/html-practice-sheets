@@ -118,6 +118,9 @@ function listLib(pair) {
 	const index = xs => zip(generate(0, x => x + 1, length(xs)), xs);
 
 
+// Aux
+	const contains = (condx, xs) => !isEmpty(filter(condx, xs));
+
 // Library
 	return Object.freeze({
 		__proto__: null,
@@ -168,6 +171,8 @@ function listLib(pair) {
 
 		zip:     zip,
 		lookup:  lookup,
-		index:   index
+		index:   index,
+
+		contains: contains
 	});
 }
