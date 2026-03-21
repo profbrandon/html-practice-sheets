@@ -69,7 +69,7 @@ function treeLib(pair, list) {
 	const removeLabelIf = (tag, cond) => fmap(p => pair.match(p)(
 		(v, tags) => pair.build(
 			v,
-			cond(v) ? list.filter(x => x !== tag)(tags) : tags
+			cond(v) ? list.filter(x => x !== tag, tags) : tags
 		)
 	));
 
