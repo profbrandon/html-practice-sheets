@@ -138,40 +138,54 @@ function exprLib(pair, list, tree, parse) {
 
 // Traversal
 	const traversalOrder = tree.foldr(
-		ev       => list.produce(ev),
-		(ev, css) => {
+		taggedEv  => list.produce(taggedEv),
+		(taggedEv, css) => {
 			const cs = list.join(css);
 
-			return matchType(ev)(
+			const dontTraverse = tag => 
+				tag.name  === 'traverse' && 
+				tag.value === false;
+
+			const skip = list.contains(dontTraverse, tree.labels.getLabels(taggedEv))
+
+			return matchType(tree.labels.getValue(taggedEv))(
 				// Leaves don't need definitions
 				number   => undefined,
 				variable => undefined,
 				voidOp   => undefined,
 
 				// Branches
-				unaryOp  => matchFixity(unaryOp)(
-					prefix  => list.cons(ev, cs), 
-					infix   => undefined,
-					postfix => list.append(ev, cs) 
-				),
-				binaryOp => matchFixity(binaryOp)(
-					prefix  => list.cons(ev, cs),
-					infix   => list.concat(list.head(css), list.cons(ev, list.join(list.tail(css)))),
-					postfix => list.append(ev, cs)
-				)
-			)
+				unaryOp  => 
+					(skip ? cs :
+						matchFixity(unaryOp)(
+							prefix  => list.cons(taggedEv, cs), 
+							infix   => undefined,
+							postfix => list.append(taggedEv, cs) 
+						)),
+				binaryOp => 
+					(skip ? cs :
+						matchFixity(binaryOp)(
+							prefix  => list.cons(taggedEv, cs),
+							infix   => list.concat(list.head(css), list.cons(taggedEv, list.join(list.tail(css)))),
+							postfix => list.append(taggedEv, cs)
+						))
+			);
 		}
 	);
 
 
 // Labeling
-	const labelPosition = e => list.foldr(
-		tree.labels.create(e), 
-		(p, t) => pair.match(p)(
-			(pos, value) => 
-				tree.labels.add(tree.labels.build('pos', pos), value)(t)
+	const labelPosition = labeledExpr => list.foldr(
+		labeledExpr, 
+		(itemPair, result) => 
+			pair.match(itemPair)(
+				(pos, taggedEv) => 
+					tree.labels.add(
+						tree.labels.build('pos', pos), 
+						tree.labels.getValue(taggedEv)
+					)(result)
 		)
-	)(list.index(traversalOrder(e)));
+	)(list.index(traversalOrder(labeledExpr)));
 
 
 // Library
