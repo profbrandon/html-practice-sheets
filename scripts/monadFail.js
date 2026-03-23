@@ -1,38 +1,39 @@
 
-function monadFailLib(monad) {
+createLib('monadFail', lib => {
 
-	const create = (monad, zero) => {
+// Monad Fail Instance Creation
+	const create = (baseMonad, zero) => {
 
-		const guard = b => b ? monad.produce({}) : zero;
+		const bm = lib.qualify(baseMonad, {
+			produce: 'produce',
+			bind:    'bind',
+			seq:     'seq'
+		});
+
+		const guard = b => b ? bm.produce({}) : zero;
 
 		const filter = (condx, mx) => 
-			monad.bind(
+			bm.bind(
 				mx, 
-				x => monad.seq(
+				x => bm.seq(
 					guard(condx), 
-					monad.produce(x)));
+					bm.produce(x)));
 
-		let output = {
-			__proto__: null,
+		const seqF = (...values) => 
+			(values.length === 0) ? zero : bm.seq(...values)
 
-			zero:   Object.freeze(zero),
-			fail:   Object.freeze(zero),
-
-			guard:  Object.freeze(guard),
-			filter: Object.freeze(filter)
-		};
-
-		for (const field in monad)
-			output[field] = monad[field];
-
-		return Object.freeze(output);
+		return lib.exports(
+			lib.exL(baseMonad),
+			lib.exp(zero,		'zero', 'fail'),
+			lib.exp(guard,		'guard'),
+			lib.exp(filter,		'filter'),
+			lib.exp(seqF,		'seq')
+		);
 	}
 
-	return Object.freeze({
-		__proto__: null,
 
-		monad:  monad,
-
-		create: create
-	})
-}
+// Library
+	return lib.exports(
+		lib.exp(create,		'create')
+	);
+});
