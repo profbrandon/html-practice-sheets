@@ -1,14 +1,51 @@
 
-function mathMLLib(pair, list, tree, expr, markup, parse) {
+createLib('mathML', lib => {
+
+	lib.expect('mathML', 'pair');
+	lib.expect('mathML', 'list');
+	lib.expect('mathML', 'tree');
+	lib.expect('mathML', 'expr');
+	lib.expect('mathML', 'markup');
+	lib.expect('mathML', 'parse');
+
+	const [ pair ] = lib.use('pair');
+
+	const list = lib.importAs('list', {
+		nil: 'nil',
+		head: 'head',
+		tail: 'tail',
+		build: 'build',
+		cons: 'cons',
+		append: 'append',
+		monad: 'monad'
+	});
+
+	const tree = lib.importAs('tree', {
+		leaf: 'leaf',
+		node: 'node',
+		foldr: 'foldr',
+		label: 'label'
+	});
+
+	const expr = lib.importAs('expr', {
+		get: 'get',
+		infix: 'infix',
+		matchType: 'matchType',
+		matchFixity: 'matchFixity'
+	});
+
+	const markup = lib.importAs('markup', {
+		build: 'build'	
+	});
 
 // Markup Generation
 	const textContainer = (tag, attributes, txt) => 
 		tree.node(
-			markup.el(tag, false, attributes), 
-			list.build(tree.leaf(markup.text(txt)))
+			markup.build.el(tag, false, attributes), 
+			list.build(tree.leaf(markup.build.text(txt)))
 		);
 
-	const processTags = list.fmap(tag => markup.attr(tag.name, tag.value));
+	const processTags = list.monad.fmap(tag => markup.build.attr(tag.name, tag.value));
 
 	const markupExpr = (ev, tags) => expr.matchType(ev)(
 		n   => textContainer('mn', processTags(tags), n), 
@@ -18,7 +55,7 @@ function mathMLLib(pair, list, tree, expr, markup, parse) {
 				return textContainer(
 					'div', 
 					list.cons(
-						markup.attr(
+						markup.build.attr(
 							'class',
 							'placeholder'
 						),
@@ -35,8 +72,8 @@ function mathMLLib(pair, list, tree, expr, markup, parse) {
 	const markupExprTree = tree.foldr(
 		p => pair.match(p)((ev, tags) => markupExpr(ev, tags)),
 		(v, cs) => {
-			const tags = tree.labels.getLabels(v);
-			const ev = tree.labels.getValue(v);
+			const tags = tree.label.getLabels(v);
+			const ev = tree.label.getValue(v);
 			const op = ev.value;
 
 			if (expr.get.fixity(op) === expr.infix &&
@@ -44,11 +81,11 @@ function mathMLLib(pair, list, tree, expr, markup, parse) {
 				(expr.get.symbol(op) === '^'))
 
 				return tree.node(
-					markup.el(expr.get.symbol(op) === '/' ? 'mfrac' : 'msup', false, processTags(tags)),
+					markup.build.el(expr.get.symbol(op) === '/' ? 'mfrac' : 'msup', false, processTags(tags)),
 					cs);
 			else
 				return tree.node(
-					markup.el('mrow', false, list.nil),
+					markup.build.el('mrow', false, list.nil),
 					expr.matchFixity(op)(
 						prefixOp  => list.cons(markupExpr(ev, tags), cs),
 						infixOp   => list.cons(list.head(cs), list.cons(markupExpr(ev, tags), list.tail(cs))),
@@ -60,9 +97,7 @@ function mathMLLib(pair, list, tree, expr, markup, parse) {
 
 
 // Library
-	return Object.freeze({
-		__proto__: null,
-
-		markupLabeledExprTree: markupExprTree
-	})
-}
+	return lib.exports(
+		lib.exp(markupExprTree, 'markupLabeledExprTree')
+	);
+});

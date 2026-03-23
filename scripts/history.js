@@ -1,6 +1,18 @@
 
 
-function historyLib(list) {
+createLib('history', lib => {
+
+	lib.expect('history', 'list');
+
+	const list = lib.importAs('list', {
+		nil: 'nil',
+		isEmpty: 'isEmpty',
+		head: 'head',
+		tail: 'tail',
+		isEmtpy: 'isEmtpy',
+		monad: 'monad'
+	});
+
 
 // Errors
 	let reportError = console.log;
@@ -56,7 +68,7 @@ function historyLib(list) {
 		const applyAll = direction => prod => {
 			let obj = Object.create(null);
 
-			let out = list.bind(
+			let out = list.monad.bind(
 				associations,
 				assoc => {
 					if (assoc['field'] == undefined || assoc['action'] == undefined) {
@@ -141,51 +153,46 @@ function historyLib(list) {
 			queue = [];
 		};
 
-		return Object.freeze({
-			__proto__: null,
+		const current = () => state;
+		const size    = () => queue.length;
 
-			current:  () => state,
-			size:     () => queue.length,
+		return lib.exports(
+			lib.exp(current,	'current'),
+			lib.exp(size,		'size'),
 
-			clear:    clear,
+			lib.exp(clear,		'clear'),
 
-			push:     push,
+			lib.exp(push,		'push'),
 
-			forward:  forward,
-			backward: backward,
+			lib.exp(forward,	'forward'),
+			lib.exp(backward,	'backward'),
 
-			start:    start,
-			end:      end
-		});
+			lib.exp(start,		'start'),
+			lib.exp(end,		'end')
+		);
 	};
-	
-	return Object.freeze({
-		__proto__: null,
 
-		errors: Object.freeze({
-			__proto__: null,
+	return lib.exports(
+		lib.exp(createHistory,	'create'),
 
-			setStream: f => { reportError = f }
-		}),
+		lib.exp(lib.exports(
+				lib.exp(f => { reportError = f },	'setStream')
+			),
+			'errors'),
 
-		actions: Object.freeze({
-			__proto__: null,
+		lib.exp(lib.exports(
+				lib.exp(buildAction,		'build'),
 
-			build:     buildAction,
+				lib.exp(doNothing,		'doNothing', 'nothing'),
+				lib.exp(setValue,		'setValue', 'set'),
+				
+				lib.exp(reverseAction,		'reverse'),
+				lib.exp(sequenceActions,	'sequenceActions', 'seq'),
 
-			reverse:   reverseAction,
-			sequence:  sequenceActions,
-			seq:       sequenceActions,
-			product:   productAction,
-			prod:      productAction,
+				lib.exp(productAction,		'produce', 'prod'),
 
-			assoc:     buildAssoc,
-
-			doNothing: doNothing,
-			setValue:  setValue,
-			set:       setValue
-		}),
-
-		create: createHistory
-	});
-}
+				lib.exp(buildAssoc,		'assoc')
+			),
+			'actions')
+	);
+});
