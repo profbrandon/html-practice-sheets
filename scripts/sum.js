@@ -1,5 +1,5 @@
 
-function sumLib() {
+createLib('sum', lib => {
 
 // Constructors
 	const left = a => Object.freeze({
@@ -41,15 +41,11 @@ function sumLib() {
 
 
 // Library
-	return Object.freeze({
-		__proto__: null,
-
-		left:  left,
-		right: right,
-
-		match: match,
-
-		fmapL: fmapL,
-		fmapR: fmapR
-	});
-}
+	return lib.exports(
+		lib.exp(left, 	'left', 'inl'),
+		lib.exp(right, 	'right', 'inr'),
+		lib.exp(match,	'match', 'destroy'),
+		lib.exp(fmapL,  'fmapL'),
+		lib.exp(fmapR,  'fmapR')
+	);
+})
