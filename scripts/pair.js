@@ -1,5 +1,5 @@
 
-function pairLib() {
+createLib('pair', lib => {
 
 // Constructor
 	const pair = (a, b) => Object.freeze({
@@ -27,20 +27,14 @@ function pairLib() {
 
 
 // Library
-	return Object.freeze({
-		__proto__: null,
+	return lib.exports(
+		lib.exp(pair,		'pair', 'build'),
 
-		pair:   pair,
-		build:  pair,
+		lib.exp(match,		'match', 'destroy'),
+		lib.exp(fst,		'fst', 'first'),
+		lib.exp(snd,		'snd', 'second'),
 
-		match:  match,
-		first:  fst,
-		fst:    fst,
-		second: snd,
-		snd:    snd,
-
-		fmap:   fmap,
-
-		swap:   swap
-	});
-}
+		lib.exp(fmap,		'fmap'),
+		lib.exp(swap,		'swap')
+	);
+});

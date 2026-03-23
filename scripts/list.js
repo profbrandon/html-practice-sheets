@@ -1,5 +1,14 @@
 
-function listLib(monad, monadFail, pair) {
+createLib('list', lib => {
+
+// Imports
+	lib.expect('list', 'pair');
+	lib.expect('list', 'monad');
+	lib.expect('list', 'monadFail');
+
+	const pr    = lib.importAs('pair', { build: 'build', fst: 'fst', snd: 'snd' });
+	const mon   = lib.importAs('monad', { create1: 'create' });
+	const mfail = lib.importAs('monadFail', { create: 'create' });
 
 // Constructors
 	const empty = Object.freeze({
@@ -35,13 +44,13 @@ function listLib(monad, monadFail, pair) {
 // Monad
 	const concat = (xs, ys) => foldr(ys, cons)(xs);
 
-	const listMonad = monad.create(
+	const listMonad = mon.create(
 		/* fmap    */ f => foldr(empty, (a, bs) => cons(f(a), bs)),
 		/* produce */ a => cons(a, empty),  
 		/* join    */ foldr(empty, concat)
 	);
 
-	const listMonadFail = monadFail.create(monad, /* zero */ empty);
+	const listMonadFail = mfail.create(listMonad, /* zero */ empty);
 
 
 // Accessors
@@ -58,10 +67,10 @@ function listLib(monad, monadFail, pair) {
 
 
 // Properties
-	const isEmpty = foldr(true, (_, _) => false);
+	const isEmpty = foldr(true, _ => false);
 	const length  = foldr(0,    (_, n) => n + 1);
 
-	const contains = (condx, xs) => !isEmpty(listMonad.filter(condx, xs));
+	const contains = (condx, xs) => !isEmpty(listMonadFail.filter(condx, xs));
 
 
 // Creation
@@ -70,7 +79,7 @@ function listLib(monad, monadFail, pair) {
 	const generate = (seed, f, n) => 
 		n === 0 ? 
 			empty : 
-			cons(seed, fmap(f)(generate(seed, f, n - 1)));
+			cons(seed, listMonad.fmap(f)(generate(seed, f, n - 1)));
 
 
 // Adding Eleemnts
@@ -85,25 +94,23 @@ function listLib(monad, monadFail, pair) {
 
 	const array = arr => foldl([], (x, a) => { a.push(x); return a; })(arr).slice();
 
-	function list() {
-		return fromArray(Array.from(arguments));
-	}
+	const build = (...args) => fromArray(args);
 
 
 // Dictionaries
-	const zip(xs, ys) => {
+	const zip = (xs, ys) => {
 		if (isEmpty(xs) || isEmpty(ys))
 			return empty;
 		else
 			return cons(
-				pair.build(head(xs), head(ys)), 
+				pr.build(head(xs), head(ys)), 
 				zip(tail(xs), tail(ys))
 			);
 	};
 
 	const lookup = (field, dict) => foldr(
 		undefined, 
-		(x, r) => pair.fst(x) === field ? pair.snd(x) : r
+		(x, r) => pr.fst(x) === field ? pr.snd(x) : r
 	)(dict);
 
 	const index = xs => zip(
@@ -112,52 +119,45 @@ function listLib(monad, monadFail, pair) {
 
 
 // Library
-	return Object.freeze({
-		__proto__: null,
-
-		empty:    empty,
-		nil:      empty,
-
-		build:    list,
-		array:    array,
-
-		head:     head,
-		tail:     tail,
-		last:     last,
-		init:     init,
-
-		cons:     cons,
-		append:   append,
-		insert:   insert,
-
-		length:   length,
-
-		drop:     drop,
-		take:     take,
-		at:       at,
-
-		contains: contains,
-		isEmpty:  isEmpty,
-
-		foldr:    foldr,
-		foldl:    foldl,
+	return lib.exports(
+		lib.exp(empty, 		'empty', 'nil'),
 		
-		concat:   concat,
-		reverse:  reverse,
-		generate: generate,
+		lib.exp(build,		'build'),
+		lib.exp(array,		'array'),
+		
+		lib.exp(lib.exports(
+			lib.exp(fromArray, 	'array'), 
+			lib.exp(fromStr, 	'str')), 
+			'from'),
 
-		zip:      zip,
-		lookup:   lookup,
-		index:    index,
+		lib.exp(foldr,		'foldr'),
+		lib.exp(foldl,		'foldl'),
 
-		monad:    listMonad,
-		mFail:    listMonadFail,
+		lib.exp(head, 		'head'),
+		lib.exp(tail,		'tail'),
+		lib.exp(last,		'last'),
+		lib.exp(init, 		'init'),
 
-		from: Object.freeze({
-			__proto__: null,
+		lib.exp(cons,		'cons', 'prepend'),
+		lib.exp(append,		'append'),
+		lib.exp(insert,		'insert'),
 
-			array: fromArray,
-			str:   fromStr
-		})
-	});
-}
+		lib.exp(drop,		'drop'),
+		lib.exp(take,		'take'),
+		lib.exp(at,		'at'),
+
+		lib.exp(isEmpty,	'isEmpty', 'isNil'),
+		lib.exp(contains,	'contains'),	
+		lib.exp(length,		'length'),
+
+		lib.exp(concat,		'concat'),
+		lib.exp(reverse,	'reverse'),
+		lib.exp(generate,	'generate'),
+
+		lib.exp(zip,		'zip'),
+		lib.exp(lookup,		'lookup'),
+		lib.exp(index,		'index'),
+
+		lib.exp(listMonadFail, 'monad')
+	);
+});

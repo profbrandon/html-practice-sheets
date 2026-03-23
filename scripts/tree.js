@@ -1,6 +1,27 @@
-function treeLib(pair, list) {
+createLib('tree', lib => {
 
-// Trees
+// Imports
+	lib.expect('tree', 'pair');
+	lib.expect('tree', 'list');
+	lib.expect('tree', 'monad');
+	
+	const pair = lib.importAs('pair', { 
+		build: 'build', 
+		match: 'match' 
+	});
+
+	const list = lib.importAs('list', { 
+		nil:     'nil', 
+		cons:    'cons', 
+		append:  'append',
+		isEmpty: 'isEmpty', 
+		build:   'build', 
+		monad:   'mon'
+	});
+
+	const [ monad ] = lib.use('monad');
+
+// Constructors
 	const node = (value, children) => {
 		return Object.freeze({
 			__proto__: null,
@@ -12,31 +33,46 @@ function treeLib(pair, list) {
 
 	const leaf = value => node(value, list.nil);
 
-	const isLeaf = tree => list.isEmpty(tree.children);
 
-	const value = tree => tree.value;
-
-	const children = tree => tree.children; 
-
+// Destructor
 	const foldr = (onLeaf, onBranch) => tree => {
 		if (isLeaf(tree))
 			return onLeaf(tree.value);
 		else
-			return onBranch(tree.value, list.fmap(foldr(onLeaf, onBranch))(tree.children));
+			return onBranch(tree.value, list.mon.fmap(foldr(onLeaf, onBranch))(tree.children));
 	};
 
+
+// Accessors
+	const value = tree => tree.value;
+
+	const children = tree => tree.children;
+
+
+// Monad
+	const join = tta => foldr(
+		ta => ta, 
+		(ta, tas) => node(ta.value, list.concat(ta.children, tas))
+	)(tta)
+	
 	const fmap = f => foldr(v => leaf(f(v)), (v, c) => node(f(v), c));
 
+	const treeMonad = monad.create1(fmap, /* produce */ leaf, join);
+
+
+// Predicates
+
+	const isLeaf = tree => list.isEmpty(tree.children);
 	
 // Traversal
-	const depthFirstPolish = foldr(
-		list.produce, 
-		(v, c) => list.cons(v, list.join(c))
+	const polish = foldr(
+		list.build, 
+		(v, c) => list.cons(v, list.mon.join(c))
 	);
 
-	const depthFirstReversePolish = foldr(
-		list.produce, 
-		(v, c) => list.append(v, list.join(c))
+	const reversePolish = foldr(
+		list.build, 
+		(v, c) => list.append(v, list.mon.join(c))
 	);
 
 
@@ -69,7 +105,7 @@ function treeLib(pair, list) {
 	const removeLabelIf = (tag, cond) => fmap(p => pair.match(p)(
 		(v, tags) => pair.build(
 			v,
-			cond(v) ? list.filter(x => x !== tag, tags) : tags
+			cond(v) ? list.monad.filter(x => x !== tag, tags) : tags
 		)
 	));
 
@@ -77,11 +113,11 @@ function treeLib(pair, list) {
 
 	const removeLabels = (tag, value) => removeLabelsIf(tag, v => v === value);
 
-	const stripLabels = removeLabelsIf(x => true);
-
 	const getLabels = pair.snd;
 
 	const getValue = pair.fst;
+
+	const stripLabels = fmap(getValue);
 
 
 
@@ -104,9 +140,9 @@ function treeLib(pair, list) {
 			p => list.build((pair.snd(p) ? '\u2514' : '\u251C') + ' ' + pair.fst(p)),
 			(p, cs) => {
 				if (pair.snd(p))
-					return list.cons('\u2514' + ' ' + pair.fst(p), list.fmap(q => '  ' + q)(list.join(cs)));
+					return list.cons('\u2514' + ' ' + pair.fst(p), list.monad.fmap(q => '  ' + q)(list.monad.join(cs)));
 				else
-					return list.cons('\u251C' + ' ' + pair.fst(p), list.fmap(q => '\u2502' + ' ' + q)(list.join(cs)));
+					return list.cons('\u251C' + ' ' + pair.fst(p), list.monad.fmap(q => '\u2502' + ' ' + q)(list.monad.join(cs)));
 			}
 		)(markTerminals(tree));
 
@@ -118,8 +154,8 @@ function treeLib(pair, list) {
 		else
 			return list.cons(
 				'\u2514' + ' ' + tree.value, 
-				list.fmap(q => '  ' + q)(list.join(list.build(
-					list.join(list.fmap(subTreeDiagram)(list.init(tree.children))),	
+				list.monad.fmap(q => '  ' + q)(list.monad.join(list.build(
+					list.monad.join(list.monad.fmap(subTreeDiagram)(list.init(tree.children))),	
 					treeDiagram(list.last(tree.children))
 				)))
 			);
@@ -132,46 +168,43 @@ function treeLib(pair, list) {
 
 
 // Library
-	return Object.freeze({
-		__proto__: null,
+	return lib.exports(
+		lib.exp(node,		'node'),
+		lib.exp(leaf,		'leaf'),
 
-		node:     node,
-		leaf:     leaf,
-		value:    value,
-		children: children,
+		lib.exp(value,		'value'),
+		lib.exp(children, 	'children'),
+		
+		lib.exp(isLeaf,		'isLeaf'),
 
-		isLeaf:   isLeaf,
+		lib.exp(foldr,		'foldr'),
 
-		fmap:     fmap,
-		foldr:    foldr,
+		lib.exp(polish,		'polish'),
+		lib.exp(reversePolish,	'rPolish'),
 
-		polish:   depthFirstPolish,
-		rPolish:  depthFirstReversePolish,
+		lib.exp(treeDiagram,	'diagram'),
+		lib.exp(print,		'print'),
 
-		labels: Object.freeze({
-			__proto__: null,
+		lib.exp(treeMonad,      'monad'),
 
-			build:       buildLabel,
+		lib.exp(lib.exports(
+				lib.exp(buildLabel,	'build'),
+				lib.exp(labeledTree,	'tree'),
 
-			create:      labeledTree,
+				lib.exp(addLabelIf,	'addIf'),
+				lib.exp(addLabel,	'add'),
 
-			addIf:       addLabelIf,
-			add:         addLabel,
+				lib.exp(removeLabelsIf,	'removeAllIf'),
+				lib.exp(removeLabels,	'removeAll'),
+				lib.exp(removeLabelIf,	'removeIf'),
+				lib.exp(removeLabel,	'remove'),
 
-			removeAllIf: removeLabelsIf,
-			removeAll:   removeLabels,
-			removeIf:    removeLabelIf,
-			remove:      removeLabel,
-
-			strip:       stripLabels,
-
-			getValue:    getValue,
-			getLabels:   getLabels
-		}),
-
-		diagram:  treeDiagram,
-
-		print:    print
-	});
-}
+				lib.exp(stripLabels,	'strip'),
+				
+				lib.exp(getValue,	'getValue'),
+				lib.exp(getLabels,	'getLabels')
+			),
+			'label')
+	);
+});
 
