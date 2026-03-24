@@ -1,5 +1,32 @@
 
-function markupLib(pair, list, tree, parse) {
+createLib('markup', lib => {
+
+	lib.expect('markup', 'pair');
+	lib.expect('markup', 'list');
+	lib.expect('markup', 'tree');
+	lib.expect('markup', 'parse');
+
+	const pair = lib.importAs('pair', { build: 'build', match: 'match' });
+	const list = lib.importAs('list', {
+		array: 'array',
+		build: 'build',
+		head: 'head',
+		foldr: 'foldr',
+		foldl: 'foldl',
+		monad: 'monad'
+	});
+	const tree = lib.importAs('tree', { leaf: 'leaf', node: 'node', foldr: 'foldr' });
+	const parse = lib.importAs('parse', { 
+		monad: 'monad', 
+		str: 'str', 
+		tryAll: 'tryAll',
+		tryCatch: 'tryCatch',
+		between: 'between',
+		many: 'many',
+		many1: 'many1',
+		failBecause: 'failBecause',
+	});
+
 
 // Elements
 	const attribute = (name, value) => {
@@ -29,10 +56,12 @@ function markupLib(pair, list, tree, parse) {
 
 	const text = str => element('text:', true, list.build(attribute('value', str)));
 
+	const isText = e => e.tag === 'text:';
+
 
 // Rendering Elements as Strings
 	const header = e => {
-		if (e.tag === 'text:') {
+		if (isText(e)) {
 			const str = list.head(e.attributes).value;
 			const display = str.length > 64 ? str.slice(0, 32) + ' ... ' + str.slice(-16) : str;
 
@@ -45,14 +74,14 @@ function markupLib(pair, list, tree, parse) {
 	const attributeString = a => `${a.name}='${a.value}'`;
 
 	const openingTag = e => {
-		if (e.tag === 'text:')
+		if (isText(e))
 			return list.head(e.attributes).value;
 		else
 			return `<${e.tag}${list.foldl('', (a, str) => str + ' ' + attributeString(a))(e.attributes)}>`;
 	};
 
 	const closingTag = e => {
-		if (e.tag === 'text:')
+		if (isText(e))
 			return '';
 		else
 			return `</${e.tag}>`;
@@ -64,73 +93,72 @@ function markupLib(pair, list, tree, parse) {
 
 
 // Parsing Element Trees
-	const parseJSString = parse.tryAll(
-		list.build(
-			parse.str.singleQuote, 
-			parse.str.doubleQuote)
-	);
+	const parseJSString = parse.tryAll(list.build(
+		parse.str.singleQuote, 
+		parse.str.doubleQuote
+	));
 
-	const parseAttribute = parse.bind(
+	const parseAttribute = parse.monad.bind(
 		parse.str.aWord,
-		name => parse.seq(
-			parse.str.aChar('='),
-			parse.bind(
+		name => parse.monad.seq(
+			parse.str.ing('='),
+			parse.monad.bind(
 				parseJSString,
-				value => parse.produce(attribute(name, value)))));
+				value => parse.monad.produce(attribute(name, value)))));
 
-	const parseTagAttributes = parse.bind(
+	const parseTagAttributes = parse.monad.bind(
 		parse.str.aWord,
-		tag => parse.bind(
-			parse.many(parse.seq(parse.str.aChar(' '), parseAttribute)),
-			as => parse.produce(pair.build(tag, as))
+		tag => parse.monad.bind(
+			parse.many(parse.monad.seq(parse.str.ing(' '), parseAttribute)),
+			as => parse.monad.produce(pair.build(tag, as))
 		)
 	);
 
-	const parseOpeningTag = parse.between(parse.str.aChar('<'), parseTagAttributes, parse.str.aChar('>'));
+	const parseOpeningTag = parse.between(parse.str.ing('<'), parseTagAttributes, parse.str.ing('>'));
 
-	const parseClosingTag = parse.between(parse.str.aString('</'), parse.str.aWord, parse.str.aChar('>'));
+	const parseClosingTag = parse.between(parse.str.ing('</'), parse.str.aWord, parse.str.ing('>'));
 
-	const parseSelfClosingTag = parse.between(parse.str.aChar('<'), parseTagAttributes, parse.str.aString('/>'));
+	const parseSelfClosingTag = parse.between(parse.str.ing('<'), parseTagAttributes, parse.str.ing('/>'));
 
-	const parseText = parse.bind(
+	const parseText = parse.monad.bind(
 		// Parse any characters that are not part of an opening or closing tag
 		parse.many1(
-			parse.bind(
+			parse.monad.bind(
 				parse.tryCatch(
-					parse.seq(
+					parse.monad.seq(
 						parse.tryAll(list.build(parseOpeningTag, parseClosingTag)), 
-						parse.produce('')),
+						parse.monad.produce('')),
 					_ => parse.str.anyChar
 				),
-				s => s.length === 0 ? parse.fail : parse.produce(s))),
+				s => s.length === 0 ? parse.monad.fail : parse.monad.produce(s))),
 		// Wrap those characters in a 'text:' node.
-		cs => parse.produce(tree.leaf(text(
-			list.array(list.filter(c => c != '\n', cs)).join('')
+		cs => parse.monad.produce(tree.leaf(text(
+			list.array(list.monad.filter(c => c != '\n', cs)).join('')
 		)))
 	);
 
-	const parseVoidElement = parse.bind(
+	const parseVoidElement = parse.monad.bind(
 		parse.tryAll(list.build(
 			parseOpeningTag,
 			parseSelfClosingTag
 		)),
-		p => parse.produce(
+		p => parse.monad.produce(
 			pair.match(p)(
 				(tag, attributes) => tree.leaf(element(tag, true, attributes))
 			)
 		)
 	);
 
-	const parseNormalElement = children => parse.bind(
+	const parseNormalElement = children => parse.monad.bind(
 		parseOpeningTag,
-		p => parse.bind(
+		p => parse.monad.bind(
 			children,
-			cs => parse.bind(
+			cs => parse.monad.bind(
 				parseClosingTag,
 				close => pair.match(p)(
 					(open, attributes) => {
 						if (open === close)
-							return parse.produce(tree.node(element(open, false, attributes), cs));
+							return parse.monad.produce(tree.node(element(open, false, attributes), cs));
 						else
 							return parse.failBecause(`ending tag '${close}' does not match the opening tag '${open}'`);
 					})
@@ -138,8 +166,8 @@ function markupLib(pair, list, tree, parse) {
 		)
 	);
 
-	const fix = (f) => parse.bind(
-		parse.produce(g => g(fix(g))),
+	const fix = (f) => parse.monad.bind(
+		parse.monad.produce(g => g(fix(g))),
 		q => q(f)
 	);
 
@@ -157,44 +185,47 @@ function markupLib(pair, list, tree, parse) {
 
 
 // Library
-	return Object.freeze({
-		__proto__:  null,
+	return lib.exports(
+		lib.exp(lib.exports(
+				lib.exp(attribute,	'attribute', 'attr', 'at'),
+				lib.exp(element,	'element', 'elem', 'el'),
+				lib.exp(text,		'text', 'txt'),
+			),
+			'build'),
 
-		attribute:  attribute,
-		attr:       attribute,
-		element:    element,
-		el:         element,
+		lib.exp(lib.exports(
+				lib.exp(closed,		'closed')
+			),
+			'is'),
 
-		tag:        tag,
-		closed:     closed,
-		attributes: attributes,
-		rawText:    rawText,
+		lib.exp(lib.exports(
+				lib.exp(tag,		'tag'),
+				lib.exp(attributes,	'attributes', 'attrs', 'ats'),
+				lib.exp(rawText,	'rawText')
+			),
+			'get'),
 
-		text:       text,
+		lib.exp(lib.exports(
+				lib.exp(attribute,	'attribute', 'attr', 'at'),
+				lib.exp(openingTag,	'openingTag', 'open'),
+				lib.exp(closingTag,	'closingTag', 'close'),
+				lib.exp(header,		'header'),
+				lib.exp(renderTree,	'tree')
+			),
+			'render'),
 
-		header:     header,
-		openingTag: openingTag,
-		open:       openingTag,
-		closingTag: closingTag,
-		close:      closingTag,
-		renderTree: renderTree,
+		lib.exp(lib.exports(
+				lib.exp(parseTree,		'tree', 'markup'),	
 
-		parse: Object.freeze({
-			__proto__: null,
+				lib.exp(parseText,		'text'),
 
-			open:          parseOpeningTag,
-			close:         parseClosingTag,
-			selfClose:     parseSelfClosingTag,
-
-			voidElement:   parseVoidElement,
-			voidEl:        parseVoidElement,
-			normalElement: parseNormalElement,
-			normEl:        parseNormalElement,
-
-			text:          parseText,
-			tree:          parseTree
-		}),
-
-		fix:        fix
-	});
-}
+				lib.exp(parseOpeningTag,	'open'),
+				lib.exp(parseClosingTag,	'close'),	
+				lib.exp(parseSelfClosingTag,	'selfClosingTag'),
+			
+				lib.exp(parseVoidElement,	'voidElement', 'voidEl', 'leaf', 'singleton'),
+				lib.exp(parseNormalElement,	'normalElement', 'normEl', 'branch', 'node'),
+			),
+			'parse')
+	);
+});
