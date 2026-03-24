@@ -1,24 +1,9 @@
 createLib('tree', lib => {
 
 // Imports
-	lib.expect('tree', 'pair');
-	lib.expect('tree', 'list');
-	lib.expect('tree', 'monad');
+	lib.expect('tree', 'pair', 'list', 'monad');
 
-	const list = lib.importAs('list', { 
-		nil:     'nil', 
-		cons:    'cons', 
-		append:  'append',
-		concat:  'concat',
-		init:    'init',
-		last:    'last',
-		isEmpty: 'isEmpty', 
-		build:   'build', 
-		array:   'array',
-		monad:   'monad'
-	});
-
-	const [ monad, pair ] = lib.use('monad', 'pair');
+	const [ monad, pair, list ] = lib.use('monad', 'pair', 'list');
 
 // Constructors
 	const node = (value, children) => {

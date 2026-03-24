@@ -1,42 +1,10 @@
 
 createLib('mathML', lib => {
 
-	lib.expect('mathML', 'pair');
-	lib.expect('mathML', 'list');
-	lib.expect('mathML', 'tree');
-	lib.expect('mathML', 'expr');
-	lib.expect('mathML', 'markup');
-	lib.expect('mathML', 'parse');
+	lib.expect('mathML', 'pair', 'list', 'tree', 'expr', 'markup', 'parse');
 
-	const [ pair ] = lib.use('pair');
+	const [ pair, list, tree, expr, markup ] = lib.use('pair', 'list', 'tree', 'expr', 'markup');
 
-	const list = lib.importAs('list', {
-		nil: 'nil',
-		head: 'head',
-		tail: 'tail',
-		build: 'build',
-		cons: 'cons',
-		append: 'append',
-		monad: 'monad'
-	});
-
-	const tree = lib.importAs('tree', {
-		leaf: 'leaf',
-		node: 'node',
-		foldr: 'foldr',
-		label: 'label'
-	});
-
-	const expr = lib.importAs('expr', {
-		get: 'get',
-		infix: 'infix',
-		matchType: 'matchType',
-		matchFixity: 'matchFixity'
-	});
-
-	const markup = lib.importAs('markup', {
-		build: 'build'	
-	});
 
 // Markup Generation
 	const textContainer = (tag, attributes, txt) => 

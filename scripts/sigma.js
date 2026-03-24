@@ -1,21 +1,9 @@
 
 createLib('sigma', lib => {
 
-	lib.expect('sigma', 'pair');
-	lib.expect('sigma', 'sum');
-	lib.expect('sigma', 'list');
+	lib.expect('sigma', 'pair', 'sum', 'list');
 
-	const pair = lib.importAs('pair', { build: 'build' });
-	const sum = lib.use('sum');
-	const list = lib.importAs('list', { 
-		nil: 'nil', 
-		cons: 'cons',
-		build: 'build',
-		isEmpty: 'isEmpty', 
-		lookup: 'lookup', 
-		foldr: 'foldr', 
-		monad: 'monad' 
-	});
+	const [ pair, sum, list ] = lib.use('pair', 'sum', 'list');
 
 
 // Finite Sums

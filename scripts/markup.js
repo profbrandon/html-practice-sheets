@@ -1,31 +1,9 @@
 
 createLib('markup', lib => {
 
-	lib.expect('markup', 'pair');
-	lib.expect('markup', 'list');
-	lib.expect('markup', 'tree');
-	lib.expect('markup', 'parse');
+	lib.expect('markup', 'pair', 'list', 'tree', 'parse');
 
-	const pair = lib.importAs('pair', { build: 'build', match: 'match' });
-	const list = lib.importAs('list', {
-		array: 'array',
-		build: 'build',
-		head: 'head',
-		foldr: 'foldr',
-		foldl: 'foldl',
-		monad: 'monad'
-	});
-	const tree = lib.importAs('tree', { leaf: 'leaf', node: 'node', foldr: 'foldr' });
-	const parse = lib.importAs('parse', { 
-		monad: 'monad', 
-		str: 'str', 
-		tryAll: 'tryAll',
-		tryCatch: 'tryCatch',
-		between: 'between',
-		many: 'many',
-		many1: 'many1',
-		failBecause: 'failBecause',
-	});
+	const [ pair, list, tree, parse ] = lib.use('pair', 'list', 'tree', 'parse');
 
 
 // Elements

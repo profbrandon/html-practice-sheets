@@ -1,30 +1,10 @@
 
 createLib('parse', lib => {
 
-	lib.expect('parse', 'monad');
-	lib.expect('parse', 'monadFail');
-	lib.expect('parse', 'sum');
-	lib.expect('parse', 'sigma');
-	lib.expect('parse', 'pair');
-	lib.expect('parse', 'list');
+	lib.expect('parse', 'monad', 'monadFail', 'sum', 'sigma', 'pair', 'list');
 
-	const monad = lib.importAs('monad', { create2: 'create' });
-	const mfail = lib.importAs('monadFail', { create : 'create' });
-	
-	const [ sum, sigma, pair ] = lib.use('sum', 'sigma', 'pair');
-
-	const list = lib.importAs('list', {
-		nil: 'nil',
-		cons: 'cons',
-		concat: 'concat',
-		isEmpty: 'isEmpty',
-		head: 'head',
-		tail: 'tail',
-		build: 'build',
-		array: 'array',
-		monad: 'monad',
-		from: 'from'
-	});
+	const [ monad, mfail, sum, sigma, pair, list ] = 
+		lib.use('monad', 'monadFail', 'sum', 'sigma', 'pair', 'list');
 
 
 // String Utility
@@ -81,7 +61,7 @@ createLib('parse', lib => {
 		);
 	};
 
-	const parseMonad     = monad.create(produce, bind);
+	const parseMonad     = monad.create2(produce, bind);
 	const parseMonadFail = mfail.create(parseMonad, fail);
 
 	const fmap = parseMonad.fmap;

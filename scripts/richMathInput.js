@@ -1,15 +1,8 @@
 
 createLib('richMathInput', lib => {
 
-	lib.expect('richMathInput', 'pair');
-	lib.expect('richMathInput', 'list');
-	lib.expect('richMathInput', 'tree');
-	lib.expect('richMathInput', 'expr');
-	lib.expect('richMathInput', 'history');
-	lib.expect('richMathInput', 'markup');
-	lib.expect('richMathInput', 'mathML');
-	lib.expect('richMathInput', 'parse');
-
+	lib.expect('richMathInput', 'pair', 'list', 'tree', 'expr', 'history', 'markup', 'mathML', 'parse');
+	
 	const [ pair, list, tree, expr, history, markup, mathML, parse ] = 
 		lib.use('pair', 'list', 'tree', 'expr', 'history', 'markup', 'mathML', 'parse');
 

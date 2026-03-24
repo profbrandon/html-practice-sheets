@@ -1,10 +1,7 @@
 
 createLib('expr', lib => {
 
-	lib.expect('expr', 'pair');
-	lib.expect('expr', 'list');
-	lib.expect('expr', 'tree');
-	lib.expect('expr', 'parse');
+	lib.expect('expr', 'pair', 'list', 'tree', 'parse');
 
 	const [ pair ] = lib.use('pair');
 

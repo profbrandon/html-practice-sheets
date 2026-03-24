@@ -4,14 +4,7 @@ createLib('history', lib => {
 
 	lib.expect('history', 'list');
 
-	const list = lib.importAs('list', {
-		nil: 'nil',
-		isEmpty: 'isEmpty',
-		head: 'head',
-		tail: 'tail',
-		isEmtpy: 'isEmtpy',
-		monad: 'monad'
-	});
+	const [ list ] = lib.use('list');
 
 
 // Errors

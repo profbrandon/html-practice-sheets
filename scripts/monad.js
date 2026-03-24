@@ -1,7 +1,6 @@
 
 createLib('monad', lib => {
 
-// Imports
 	lib.expect('monad', 'fun');
 
 	const fun = lib.importAs('fun', { id: 'id' });

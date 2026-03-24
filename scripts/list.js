@@ -2,13 +2,9 @@
 createLib('list', lib => {
 
 // Imports
-	lib.expect('list', 'pair');
-	lib.expect('list', 'monad');
-	lib.expect('list', 'monadFail');
+	lib.expect('list', 'pair', 'monad', 'monadFail');
 
-	const pr    = lib.importAs('pair', { build: 'build', fst: 'fst', snd: 'snd' });
-	const mon   = lib.importAs('monad', { create1: 'create' });
-	const mfail = lib.importAs('monadFail', { create: 'create' });
+	const [ pr, mon, mfail ] = lib.use('pair', 'monad', 'monadFail');
 
 // Constructors
 	const empty = Object.freeze({
@@ -44,7 +40,7 @@ createLib('list', lib => {
 // Monad
 	const concat = (xs, ys) => foldr(ys, cons)(xs);
 
-	const listMonad = mon.create(
+	const listMonad = mon.create1(
 		/* fmap    */ f => foldr(empty, (a, bs) => cons(f(a), bs)),
 		/* produce */ a => cons(a, empty),  
 		/* join    */ foldr(empty, concat)

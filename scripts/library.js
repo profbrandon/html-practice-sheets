@@ -3,9 +3,18 @@ const createLib = (() => {
 
 	let libraries = Object.create(null);
 
-	const expect = (dependentName, dependencyName) => {
-		if (libraries[dependencyName] == undefined)
-			throw `${dependentName} library requires the dependency ${dependencyName}`;
+	const expect = (dependentName, ...dependencyNames) => {
+	
+		let unknowns = [];
+		
+		dependencyNames.forEach(
+			dependencyName => {
+				if (libraries[dependencyName] == undefined)
+					unknowns.push(dependencyName);
+			});
+
+		if (unknowns.length != 0)
+			throw `${dependentName} library requires the dependenc${unknowns.length === 1 ? 'y' : 'ies'} ${unknowns.reduce((a, b) => a + ', ' + b)}.`;
 	}
 
 	const qualify = (lib, fields) => {
