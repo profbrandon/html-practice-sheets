@@ -4,22 +4,21 @@ createLib('tree', lib => {
 	lib.expect('tree', 'pair');
 	lib.expect('tree', 'list');
 	lib.expect('tree', 'monad');
-	
-	const pair = lib.importAs('pair', { 
-		build: 'build', 
-		match: 'match' 
-	});
 
 	const list = lib.importAs('list', { 
 		nil:     'nil', 
 		cons:    'cons', 
 		append:  'append',
+		concat:  'concat',
+		init:    'init',
+		last:    'last',
 		isEmpty: 'isEmpty', 
 		build:   'build', 
-		monad:   'mon'
+		array:   'array',
+		monad:   'monad'
 	});
 
-	const [ monad ] = lib.use('monad');
+	const [ monad, pair ] = lib.use('monad', 'pair');
 
 // Constructors
 	const node = (value, children) => {
@@ -39,7 +38,7 @@ createLib('tree', lib => {
 		if (isLeaf(tree))
 			return onLeaf(tree.value);
 		else
-			return onBranch(tree.value, list.mon.fmap(foldr(onLeaf, onBranch))(tree.children));
+			return onBranch(tree.value, list.monad.fmap(foldr(onLeaf, onBranch))(tree.children));
 	};
 
 
@@ -67,12 +66,12 @@ createLib('tree', lib => {
 // Traversal
 	const polish = foldr(
 		list.build, 
-		(v, c) => list.cons(v, list.mon.join(c))
+		(v, c) => list.cons(v, list.monad.join(c))
 	);
 
 	const reversePolish = foldr(
 		list.build, 
-		(v, c) => list.append(v, list.mon.join(c))
+		(v, c) => list.append(v, list.monad.join(c))
 	);
 
 
