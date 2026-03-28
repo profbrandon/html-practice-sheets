@@ -13,7 +13,9 @@ createLib('monad', lib => {
 
 		const seq = (...ms) => (ms.length === 0) ? undefined : ms.reduce(seq2);
 
-		const kleisli = (mg, mf) => a => bind(mf(a), mg);
+		const kleisli2 = (mg, mf) => a => bind(mf(a), mg);
+
+		const kleisli = (...mfs) => ms.reduce(kleisli2, produce);
 
 		/* m (a -> b) -> m a -> m b */
 		const app = (mf, ma) => bind(

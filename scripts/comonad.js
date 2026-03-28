@@ -14,12 +14,18 @@ createLib('comonad', lib => {
 		const seq = (...ws) => (ws.length === 0) ? undefined : ws.reduce(seq2);
 
 		/* (w b -> c) -> (w a -> b) -> (w a -> c) */
-		const cokleisli = (mg, mf) => a => fun.compose(mg, extend(mf));
+		const cokleisli2 = (wg, wf) => a => fun.compose(mg, extend(mf));
 
+		const cokleisli = (...wfs) => wfs.reduce(cokleisli2, extract);
+
+		// TODO: Figure out why this is not equivalent.
 		/* w (a -> b) -> w a -> w b */
+	/*	const app = fun.compose(extract, fmap(fmap));*/
+		
 		const app = (wf, wa) => extend(
 			fun.compose(extract(wf), extract), 
 			wa);
+		
 
 
 	// Comonad Object
@@ -44,7 +50,7 @@ createLib('comonad', lib => {
 
 	const create2 = (extract, extend) => 
 		create(
-			/* fmap */ f => wa => extend(fun.compose(f, extract), wa)),
+			/* fmap */ f => wa => extend(fun.compose(f, extract), wa),
 			extract,
 			/* join */ wa => extend(fun.id, wa),
 			extend
