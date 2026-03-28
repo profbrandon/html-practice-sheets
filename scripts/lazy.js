@@ -8,7 +8,7 @@ createLib('lazy', lib => {
 	/* Lazy a := () -> a */
 
 	/* a => Lazy a */
-	const wrap = a => _ => a;
+	const wrap = a => _ => a
 
 	/* Lazy a -> a */
 	const extract = l => l({});
@@ -17,7 +17,7 @@ createLib('lazy', lib => {
 	const fmap = f => l => fun.compose(f, l);
 
 	/* Lazy a -> Lazy (Lazy a) */
-	const duplicate = fmap(wrap); 
+	const duplicate = wrap; 
 
 	const lazyComonad = comonad.create1(fmap, extract, duplicate);
 

@@ -9,7 +9,7 @@ createLib('comonad', lib => {
 // Comonad Instance Creation
 	const create = (fmap, extract, duplicate, extend) => {
 
-		const seq2 = (wa, wb) => extend(_ => extract(mb), wa);
+		const seq2 = (wa, wb) => extend(_ => extract(mb))(wa);
 
 		const seq = (...ws) => (ws.length === 0) ? undefined : ws.reduce(seq2);
 
@@ -20,12 +20,12 @@ createLib('comonad', lib => {
 
 		// TODO: Figure out why this is not equivalent.
 		/* w (a -> b) -> w a -> w b */
-	/*	const app = fun.compose(extract, fmap(fmap));*/
+	//	const app = fun.compose(extract, fmap(fmap));
 		
 		const app = (wf, wa) => extend(
-			fun.compose(extract(wf), extract), 
-			wa);
-		
+			fun.compose(extract(wf), extract)) 
+			(wa);
+	
 
 
 	// Comonad Object
@@ -45,14 +45,14 @@ createLib('comonad', lib => {
 			fmap, 
 			extract, 
 			duplicate, 
-			/* extend */ (f, wa) => fmap(f)(duplicate(wa))
+			/* extend */ f => fun.compose(fmap(f), duplicate)
 		);
 
 	const create2 = (extract, extend) => 
 		create(
-			/* fmap */ f => wa => extend(fun.compose(f, extract), wa),
+			/* fmap */ f => extend(fun.compose(f, extract)),
 			extract,
-			/* join */ wa => extend(fun.id, wa),
+			/* join */ extend(fun.id),
 			extend
 		);
 
