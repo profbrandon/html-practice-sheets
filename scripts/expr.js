@@ -1,5 +1,27 @@
 
-function exprLib(pair, list, tree, parse) {
+createLib('expr', lib => {
+
+	lib.expect('expr', 'pair', 'list', 'tree', 'parse');
+
+	const [ pair ] = lib.use('pair');
+
+	const list = lib.importAs('list', {
+		nil: 'nil',
+		cons: 'cons',
+		build: 'build',
+		foldr: 'foldr',
+		monad: 'monad',
+		concat: 'concat',
+		index: 'index',
+		contains: 'contains'
+	});
+
+	const tree = lib.importAs('tree', {
+		leaf: 'leaf',
+		node: 'node',
+		foldr: 'foldr',
+		label: 'label'
+	})
 
 // Expression Values
 	const exprValue = (type, value) => Object.freeze({
@@ -137,18 +159,18 @@ function exprLib(pair, list, tree, parse) {
 
 
 // Traversal
-	const skipLabel = tree.labels.build('skip', null);
+	const skipLabel = tree.label.build('skip', null);
 
 	const traversalOrder = tree.foldr(
-		taggedEv  => list.produce(taggedEv),
+		taggedEv  => list.build(taggedEv),
 		(taggedEv, css) => {
-			const cs = list.join(css);
+			const cs = list.monad.join(css);
 
 			const dontTraverse = tag => tag === skipLabel;
 
-			const skip = list.contains(dontTraverse, tree.labels.getLabels(taggedEv))
+			const skip = list.contains(dontTraverse, tree.label.getLabels(taggedEv))
 
-			return matchType(tree.labels.getValue(taggedEv))(
+			return matchType(tree.label.getValue(taggedEv))(
 				// Leaves don't need definitions
 				number   => undefined,
 				variable => undefined,
@@ -166,7 +188,7 @@ function exprLib(pair, list, tree, parse) {
 					(skip ? cs :
 						matchFixity(binaryOp)(
 							prefix  => list.cons(taggedEv, cs),
-							infix   => list.concat(list.head(css), list.cons(taggedEv, list.join(list.tail(css)))),
+							infix   => list.concat(list.head(css), list.cons(taggedEv, list.monad.join(list.tail(css)))),
 							postfix => list.append(taggedEv, cs)
 						))
 			);
@@ -180,89 +202,64 @@ function exprLib(pair, list, tree, parse) {
 		(itemPair, result) => 
 			pair.match(itemPair)(
 				(pos, taggedEv) => 
-					tree.labels.add(
-						tree.labels.build('pos', pos), 
-						tree.labels.getValue(taggedEv)
+					tree.label.add(
+						tree.label.build('pos', pos), 
+						tree.label.getValue(taggedEv)
 					)(result)
 		)
 	)(list.index(traversalOrder(labeledExpr)));
 
 
 // Library
-	return Object.freeze({
-		__proto__: null,
+	return lib.exports(
+		lib.exp(lib.exports(
+				lib.exp(type,		'type'),
+				lib.exp(value,		'value'),
+				lib.exp(symbol,		'symbol'),
+				lib.exp(fixity,		'fixity'),
 
-		get: Object.freeze({
-			__proto__: null,
+				lib.exp(traversalOrder,	'traversal')
+			),
+			'get'),
 
-			type:       type,
-			value:      value,
-			symbol:     symbol,
-			fixity:     fixity,
+		lib.exp(lib.exports(
+				lib.exp(header,		'header'),
+				lib.exp(asString,	'asString', 'str')
+			),
+			'render'),
 
-			traversal:   traversalOrder
-		}),
+		lib.exp(lib.exports(
+				lib.exp(skipLabel, 	'skip'),
+				lib.exp(labelPosition,	'pos')
+			),
+			'label'),
 
-		render: Object.freeze({
-			__proto__: null,
+		lib.exp(prefix,		'prefix'),
+		lib.exp(infix,		'infix'),
+		lib.exp(postfix,	'postfix'),
 
-			header:     header,
-			asString:   asString
-		}),	
+		lib.exp(voidOp,		'voidOp', 'op0'),
+		lib.exp(unaryOp,	'unaryOp', 'op1'),
+		lib.exp(binaryOp,	'binaryOp', 'op2'),
 
-		label: Object.freeze({
-			__proto__: null,
+		lib.exp(isOperator,	'isOperator', 'isOp'),
 
-			skip: skipLabel,
+		lib.exp(lookupOp,	'lookupOp'),
 
-			pos: labelPosition
-		}),
+		lib.exp(matchType,	'matchType'),
+		lib.exp(matchFixity,	'matchFixity'),
 
-		prefix:     prefix,
-		infix:      infix,
-		postfix:    postfix,
-
-		voidOp:     voidOp,
-		unaryOp:    unaryOp,
-		binaryOp:   binaryOp,
-		isOperator: isOperator,
-		isOp:       isOperator,
-
-		lookupOp:   lookupOp,
-
-		matchType:   matchType,
-		matchFixity: matchFixity,
+		lib.exp(placeholder,	'placeholder'),
+		lib.exp(number,		'number', 'num'),
+		lib.exp(variable,	'variable', 'ind'),
 		
-		number:     number,
-		num:        number,
-		
-		variable:   variable,
-		ind:        variable,
-		
-		negative:   neg,
-		neg:        neg,
-
-		openParen:  open,
-		open:       open,
-
-		closeParen: close,
-		close:      close,
-
-		add:        add,
-		
-		subtract:   sub,
-		sub:        sub,
-
-		multiply:   mult,
-		mult:       mult,
-
-		divide:     div,
-		div:        div,
-
-		raise:      exp,
-		exp:        exp,
-		pow:        exp,
-
-		placeholder: placeholder
-	});
-}
+		lib.exp(neg,		'negative', 'neg'),
+		lib.exp(open,		'openParen', 'open'),
+		lib.exp(close,		'closeParen', 'close'),
+		lib.exp(add,		'add', 'sum'),
+		lib.exp(sub,		'sub', 'subtract'),
+		lib.exp(mult,		'mult', 'multiply'),
+		lib.exp(div,		'div', 'divide'),
+		lib.exp(exp,		'exp', 'pow', 'raise')
+	);
+});

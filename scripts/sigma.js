@@ -1,5 +1,10 @@
 
-function sigmaLib(sum, list) {
+createLib('sigma', lib => {
+
+	lib.expect('sigma', 'pair', 'sum', 'list');
+
+	const [ pair, sum, list ] = lib.use('pair', 'sum', 'list');
+
 
 // Finite Sums
 	const sigma = props => {
@@ -43,35 +48,31 @@ function sigmaLib(sum, list) {
 			return list.foldr(
 				Object.values(s)[0], 
 				(f, x) => f(x)
-			)(list.fmap(b => b ? sum.left : sum.right)(bs));
+			)(list.monad.fmap(b => b ? sum.left : sum.right)(bs));
 		};
 	
 	
 	// Aux
 		const fmap = (prop, f) => s => match(s)(
-			list.fmap(p => list.pair(p, p === prop ? f : x => x))(props)
+			list.monad.fmap(p => pair.build(p, p === prop ? f : x => x))(props)
 		);
 
 
 	// Datatype
-		return Object.freeze({
-			__proto__: null,
+		return lib.exports(
+			lib.exp(props,	'props'),
 
-			props:  props,
+			lib.exp(inject,	'inject'),
+			lib.exp(match,	'match', 'destroy'),
+			lib.exp(fmap,	'fmap'),
 
-			inject: inject,
-			match:  match,
-			fmap:   fmap,
-
-			asSum:  asSum
-		});
+			lib.exp(asSum,	'asSum')
+		);
 	}
 
 
 // Library
-	return Object.freeze({
-		__proto__: null,
-
-		create: sigma
-	});
-}
+	return lib.exports(
+		lib.exp(sigma, 'create')
+	);
+});

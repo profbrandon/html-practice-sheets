@@ -1,5 +1,13 @@
 
-function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse, win, doc) {
+createLib('richMathInput', lib => {
+
+	lib.expect('richMathInput', 'pair', 'list', 'tree', 'expr', 'history', 'markup', 'mathML', 'parse');
+	
+	const [ pair, list, tree, expr, history, markup, mathML, parse ] = 
+		lib.use('pair', 'list', 'tree', 'expr', 'history', 'markup', 'mathML', 'parse');
+
+	const win = window;
+	const doc = document;
 
 // Character Utility
 	const isDigit = c => ('0' <= c && c <= '9');
@@ -37,11 +45,11 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 		startText.innerHTML = "type here...";
 
 
-		const math = markup.el(
+		const math = markup.build.el(
 			"math",
 			false,
 			list.build(
-				markup.attr("display", "block")
+				markup.build.attr("display", "block")
 			)
 		);
 
@@ -64,16 +72,16 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 
 		// Lengths
 		const getExprLengths = () => {
-			return list.fmap(
+			return list.monad.fmap(
 				t => list.length(
-					expr.get.traversal(tree.labels.addIf(
+					expr.get.traversal(tree.label.addIf(
 						expr.label.skip,
 						ev => expr.isOp(ev) && 
 							list.contains(
 								x => x === ev.value.symbol,
 								nontraversable
 							)
-					)(tree.labels.create(t)))
+					)(tree.label.tree(t)))
 				)
 			)(state.current().exprs);
 		}
@@ -239,29 +247,29 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 				return startText.outerHTML;
 
 
-			const treePosLabeled = list.bind(
+			const treePosLabeled = list.monad.bind(
 				exprs,
-				e => list.produce(
-					expr.label.pos(tree.labels.addIf(	
+				e => list.monad.produce(
+					expr.label.pos(tree.label.addIf(	
 						expr.label.skip,
 						ev => expr.isOp(ev) && 
 							list.contains(
 								x => x == ev.value.symbol,
 								nontraversable
 							)
-					)(tree.labels.create(e)))
+					)(tree.label.tree(e)))
 				),
 			);
 
-			const exprPosLabeled = list.bind(
+			const exprPosLabeled = list.monad.bind(
 				list.index(treePosLabeled),
 				p => pair.match(p)(
-					(i, e) => list.produce(
-						tree.labels.addIf(
-							tree.labels.build('expos', i), 
+					(i, e) => list.monad.produce(
+						tree.label.addIf(
+							tree.label.build('expos', i), 
 							_ => true
 						)(
-						tree.labels.removeIf(
+						tree.label.removeIf(
 							expr.label.skip,
 							_ => true
 						)
@@ -271,10 +279,10 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 
 			const htmlTree = tree.node(
 				math,
-				list.fmap(mathML.markupLabeledExprTree)(exprPosLabeled)
+				list.monad.fmap(mathML.markupLabeledExprTree)(exprPosLabeled)
 			);
 
-			return markup.renderTree(htmlTree);
+			return markup.render.tree(htmlTree);
 		}
 
 		const get = () => {
@@ -421,4 +429,4 @@ function richMathInputLib(pair, list, tree, expr, history, markup, mathML, parse
 
 		create: create
 	});
-}
+});

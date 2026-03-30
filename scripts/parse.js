@@ -1,25 +1,17 @@
 
-function parseLib(sum, sigma, list) {
+createLib('parse', lib => {
 
-	if (list == undefined) {
-		console.log("Error: cannot initialize 'parseLib' without the 'listLib' dependency.");
-		return {};
-	}
+	lib.expect('parse', 'monad', 'monadFail', 'sum', 'sigma', 'pair', 'list');
 
-	const notes =
-		"To use the module, insert this code as well as a\n" +
-		"declaration 'const parse = parseLib()' to create\n" +
-		"an instance.\n\n" +
-
-		"All parsers accept arrays of characters as input.\n" +
-		"To feed a string to a parser, use 'parse.run(p, s)'.";
+	const [ monad, mfail, sum, sigma, pair, list ] = 
+		lib.use('monad', 'monadFail', 'sum', 'sigma', 'pair', 'list');
 
 
 // String Utility
-	const toStr  = a => list.array(a).join('');
+	const toStr = a => list.array(a).join('');
 
 
-// Parser Utility
+// Parser Definitions
 	const run = (p, input) => p(input);
 
 	const produce = value => input => 
@@ -30,6 +22,8 @@ function parseLib(sum, sigma, list) {
 			result: sum.left(value)
 		});
 
+
+//Failures
 	const failWith = value => input =>
 		Object.freeze({
 			__proto__: null,
@@ -38,22 +32,43 @@ function parseLib(sum, sigma, list) {
 			result: sum.right(value)
 		});
 
-	const getInput = input => run(produce(input), input);
-	
-	const setInput = value => _ => run(produce(Object.create(null)), value);
+	const parseError  = sigma.create(list.build('nonspecific', 'message', 'expected'));
 
+	const fail        =            failWith(parseError.inject('nonspecific')(null));
+	const failBecause = message => failWith(parseError.inject('message')(message));
+	const expected    = x       => failWith(parseError.inject('expected')(list.build(x)));
+
+	const onFailureOf = (p, err) => input => {
+		const out = run(p, input);
+		return sum.match(out.result)(
+			success => out,
+			failure => run(err(failure), out.rest)
+		);
+	}
+
+
+// Input
+	const getInput =          input => run(produce(input), input);	
+	const setInput = value => _     => run(produce(Object.create(null)), value);
+
+
+// Parser Monad
 	const bind = (p, mf) => input => {
 		const out = run(p, input);
 		return sum.match(out.result)(
 			success => run(mf(success), out.rest),
 			failure => out
 		);
-	};	
+	};
 
-	const sequence = (p, q) => bind(p, _ => q);
+	const parseMonad     = monad.create2(produce, bind);
+	const parseMonadFail = mfail.create(parseMonad, fail);
 
-	const fmap = f => px => bind(px, x => produce(f(x)));
+	const fmap = parseMonad.fmap;
+	const seq  = parseMonad.seq;
 
+
+// Combinators
 	const traverse = ps => {
 		if (list.isEmpty(ps))
 			return produce(list.nil);
@@ -65,25 +80,6 @@ function parseLib(sum, sigma, list) {
 					xs => produce(list.cons(x, xs))));
 	};
 
-
-// Failures
-	const parseError  = sigma.create(list.build('nonspecific', 'message', 'expected'));
-
-	const fail        =            failWith(parseError.inject('nonspecific')(null));
-	const failBecause = message => failWith(parseError.inject('message')(message));
-	const expected    = x       => failWith(parseError.inject('expected')(list.build(x)));
-
-	const onFailureOf = (p, err) => input => {
-		const out = run(p, input);
-
-		return sum.match(out.result)(
-			success => out,
-			failure => run(err(failure), out.rest)
-		);
-	}
-
-
-// Generic Combinators
 	const satisfy = (condx, px) => 
 		bind(px, x => condx(x) ? 
 				produce(x) : 
@@ -96,7 +92,6 @@ function parseLib(sum, sigma, list) {
 
 	const tryCatch = (p, c) => input => {
 		const out = run(p, input);
-
 		return sum.match(out.result)(
 			success => out,
 			failure => run(c(failure), input)
@@ -133,9 +128,9 @@ function parseLib(sum, sigma, list) {
 	const many1 = px =>
 		bind(px, x => bind(many(px), xs => produce(list.cons(x, xs))));
 
-	const between = (left, middle, right) => sequence(
+	const between = (left, middle, right) => seq(
 		left,
-		bind(middle, m => sequence(right, produce(m)))
+		bind(middle, m => seq(right, produce(m)))
 	);
 
 
@@ -149,7 +144,7 @@ function parseLib(sum, sigma, list) {
 			if (list.isEmpty(xs))
 				return expected('an element');
 			else
-				return sequence(
+				return seq(
 					setInput(pair.build(pos + 1, list.tail(xs))),
 					produce(list.head(xs)));
 		}
@@ -157,7 +152,7 @@ function parseLib(sum, sigma, list) {
 	
 
 // String Parsing	
-	const runStr = (p, s) => p(pair.build(0, list.fromStr(s)));
+	const runStr = (p, s) => p(pair.build(0, list.from.str(s)));
 
 
 // Characters
@@ -165,7 +160,7 @@ function parseLib(sum, sigma, list) {
 
 	const character = c => exact(c, anyChar);
 
-	const oneOf = s => tryAll(list.fmap(character)(list.fromStr(s)));
+	const oneOf = s => tryAll(list.monad.fmap(character)(list.from.str(s)));
 
 
 // Numbers
@@ -173,7 +168,7 @@ function parseLib(sum, sigma, list) {
 
 	const positive = fmap(a => parseInt(toStr(a)))(many1(digit));
 
-	const negative = sequence(
+	const negative = seq(
 		character('-'), 
 		fmap(n => -n)(positive));
 
@@ -185,7 +180,7 @@ function parseLib(sum, sigma, list) {
 			sign => bind(
 					fmap(toStr)(many1(digit)),
 					whole => tryAll(list.build(
-						sequence(
+						seq(
 							character('.'),
 							bind(
 								fmap(toStr)(many1(digit)), 
@@ -199,7 +194,7 @@ function parseLib(sum, sigma, list) {
 	const hexPositive = fmap(a => parseInt('0x' + toStr(a)))(many1(hexDigit));
 
 // Specific Strings
-	const aString = s => fmap(toStr)(traverse(list.fmap(character)(list.fromStr(s))));
+	const aString = s => fmap(toStr)(traverse(list.monad.fmap(character)(list.from.str(s))));
 
 	const singleQuoted = bind(
 		between(
@@ -234,20 +229,18 @@ function parseLib(sum, sigma, list) {
 		getInput,
 		mt => treeInput.match(mt)(list.build(
 			pair.build('empty', _ => expected('a tree')),
-			pair.build('tree',  t => produce(tree.value(t)))
-		))
+			pair.build('tree',  t => produce(tree.value(t)))))
 	);
 
 	const getChildren = bind(
 		getInput,
 		mt => treeInput.match(mt)(list.build(
 			pair.build('empty', _ => expected('a tree')),
-			pair.build('tree',  t => produce(tree.children(t)))
-		))
+			pair.build('tree',  t => produce(tree.children(t)))))
 	);
 
 	const parseLeaf = onFailureOf(
-		sequence(
+		seq(
 			satisfy(list.isEmpty, getChildren),
 			getValue
 		),
@@ -255,110 +248,84 @@ function parseLib(sum, sigma, list) {
 	);
 
 	const parseNode = onFailureOf(
-		bind(getValue,
-			v => bind(getChildren,
-				cs => sequence(
+		bind(
+			getValue,
+			v => bind(
+				getChildren,
+				cs => seq(
 					list.isEmpty(cs) ? fail : produce({}),
-					produce(pair.build(v, cs))
-				)
-			)
-		),
+					produce(pair.build(v, cs))))),
 		_ => expected('a node')
 	);
 
 
 // Library
-	return Object.freeze({
-		__proto__: null,
+	return lib.exports(
+		lib.exp(run,		'run'),
+		lib.exp(parseError,	'error'),
+		
+		lib.exp(setInput,	'setInput'),
+		lib.exp(getInput,	'getInput'),
 
-		notes:       notes,
+		lib.exp(fail,		'fail'),
+		lib.exp(failWith,	'failWith'),
+		lib.exp(failBecause,	'failBecause'),
 
-		run:         run,
-		produce:     produce,
-		setInput:    setInput,
-		getInput:    getInput,
-		bind:        bind,
-		sequence:    sequence,
-		seq:         sequence,
-		fmap:        fmap,
-		traverse:    traverse,
-		between:     between,
+		lib.exp(onFailureOf,	'onFailureOf', 'onFail'),
 
-		failWith:    failWith,
-		fail:        fail,
-		failBecause: failBecause,
-		error:       parseError,
-		onFailureOf: onFailureOf,
-		onFail:      onFailureOf,
+		lib.exp(traverse,	'traverse'),
+		lib.exp(between,	'between'),
 
-		satisfy:     satisfy,
-		ifSatisfies: satisfy,
-		exact:       exact,
-		an:          exact,
-		tryCatch:    tryCatch,
-		tryAll:      tryAll,
-		firstValid:  tryAll,
-		many:        many,
-		repeat:      many,
-		many1:       many1,
-		repeat1:     many1,
+		lib.exp(satisfy,	'satisfy', 'sat'),
+		lib.exp(exact,		'exact'),
+		lib.exp(tryCatch,	'tryCatch'),
+		lib.exp(tryAll,		'tryAll', 'firstValid', 'option'),
+		lib.exp(many,		'many', 'repeat'),
+		lib.exp(many1,		'many1', 'repeat1'),
 
-		list: Object.freeze({
-			__proto__: null,
+		lib.exp(parseMonadFail,	'monad'),
 
-			next:        nextElement,
-		}),
+		lib.exp(lib.pack(
+				lib.exp(nextElement, 'next')
+			),
+			'list'),
 
-		str: Object.freeze({
-			__proto__: null,
+		lib.exp(lib.pack(
+				lib.exp(runStr,		'run'),
+				
+				lib.exp(anyChar,	'anyChar', 'consume'),
+				lib.exp(oneOf,		'charFrom'),
+				
+				lib.exp(digit,		'digit', 'aDigit'),
+				lib.exp(positive,	'natural', 'posOrZero'),
+				lib.exp(negative,	'negOrZero'),
 
-			run:         runStr,
-			
-			anyChar:     anyChar,
-			character:   character,
-			chr:         character,
-			aChar:       character,
-			oneOf:       oneOf,
+				lib.exp(integer,	'integer', 'anInteger'),
+				lib.exp(aFloat,		'aFloat', 'decimal', 'aDecimal'),
+				lib.exp(hexPositive,	'hex'),
 
-			digit:       digit,
-			aDigit:      digit,
-			positive:    positive,
-			aPositive:   positive,
-			negative:    negative,
-			aNegative:   negative,
-			integer:     integer,
-			anInteger:   integer,
-			aFloat:      aFloat,
+				lib.exp(aString,	'str', 'aString', 'ing'),
+				lib.exp(singleQuoted, 	'singleQuote'),
+				lib.exp(doubleQuoted,	'doubleQuote'),
 
-			hexDigit:    hexDigit,
-			hexPositive: hexPositive,
+				lib.exp(lowercase,	'lowercase'),
+				lib.exp(uppercase,	'uppercase'),
+				lib.exp(aLetter,	'letter', 'aLetter'),
+				lib.exp(aWord,		'word', 'aWord')
+			),
+			'str'),
 
-			aString:     aString,
-			str:         aString,
-			singleQuote: singleQuoted,
-			doubleQuote: doubleQuoted,
+		lib.exp(lib.pack(
+				lib.exp(runTree,	'run'),
+				lib.exp(treeInput,	'input'),
 
-			lowercase:   lowercase,
-			uppercase:   uppercase,
-			letter:      aLetter,
-			aLetter:     aLetter,
-			aWord:       aWord,
-			word:        aWord
-		}),
+				lib.exp(getValue,	'value', 'getValue'),
+				lib.exp(getChildren,	'children', 'getChildren'),
 
-		tree: Object.freeze({
-			__proto__: null,
-
-			run:      runTree,
-			input:    treeInput,
-
-			value:    getValue,
-			children: getChildren,
-
-			leaf:     parseLeaf,
-			node:     parseNode
-		})
-	});
-}
-
+				lib.exp(parseLeaf,	'leaf'),
+				lib.exp(parseNode,	'node')
+			),
+			'tree')
+	);
+});
 
