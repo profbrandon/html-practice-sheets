@@ -3,25 +3,8 @@ createLib('expr', lib => {
 
 	lib.expect('expr', 'pair', 'list', 'tree', 'parse');
 
-	const [ pair ] = lib.use('pair');
+	const [ pair, list, tree, parse ] = lib.use('pair', 'list', 'tree', 'parse');
 
-	const list = lib.importAs('list', {
-		nil: 'nil',
-		cons: 'cons',
-		build: 'build',
-		foldr: 'foldr',
-		monad: 'monad',
-		concat: 'concat',
-		index: 'index',
-		contains: 'contains'
-	});
-
-	const tree = lib.importAs('tree', {
-		leaf: 'leaf',
-		node: 'node',
-		foldr: 'foldr',
-		label: 'label'
-	})
 
 // Expression Values
 	const exprValue = (type, value) => Object.freeze({
@@ -203,7 +186,7 @@ createLib('expr', lib => {
 			pair.match(itemPair)(
 				(pos, taggedEv) => 
 					tree.label.add(
-						tree.label.build('pos', pos), 
+						tree.label.build('pos2', pos), 
 						tree.label.getValue(taggedEv)
 					)(result)
 		)
