@@ -21,7 +21,7 @@ createLib('mathML', lib => {
 		vop => {
 			if (expr.get.symbol(vop) === 'Placeholder')
 				return textContainer(
-					'div', 
+					'mrow', 
 					list.cons(
 						markup.build.attr(
 							'class',
@@ -29,7 +29,7 @@ createLib('mathML', lib => {
 						),
 						processTags(tags)
 					),
-					'&nbsp;');
+					'&nbsp;<mphantom>0</mphantom>');
 			else
 				return textContainer('mo', processTags(tags), expr.get.symbol(vop))
 		},
