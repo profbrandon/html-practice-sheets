@@ -55,7 +55,7 @@ createLib('markup', lib => {
 		if (isText(e))
 			return list.head(e.attributes).value;
 		else
-			return `<${e.tag}${list.foldl('', (a, str) => str + ' ' + attributeString(a))(e.attributes)}>`;
+			return `<${e.tag}${list.foldl('', (a, str) => str + ' ' + attributeString(a))(e.attributes)}${e.closed ? '/' : ''}>`;
 	};
 
 	const closingTag = e => {
